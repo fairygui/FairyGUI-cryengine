@@ -1,0 +1,175 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{C92C51E8-F9FB-44DA-B890-A04769169B9D}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>FairyGUI</RootNamespace>
+    <AssemblyName>FairyGUI</AssemblyName>
+    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <UseMSBuildEngine>false</UseMSBuildEngine>
+    <CryEngineLauncherPath>D:\Crytek\CRYENGINE Launcher\Crytek\CRYENGINE_5.4\bin\win_x64\GameLauncher.exe</CryEngineLauncherPath>
+    <CryEngineProjectPath>D:\FairyGUI-cryengine\Game.cryproject</CryEngineProjectPath>
+    <CryEngineCommandArguments>
+    </CryEngineCommandArguments>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>D:\FairyGUI-cryengine\bin</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="System" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.XML" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="CryEngine.Common">
+      <HintPath>..\..\..\Program\CRYENGINE Launcher\Crytek\CRYENGINE_5.4\bin\win_x64\CryEngine.Common.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="CryEngine.Core">
+      <HintPath>..\..\..\Program\CRYENGINE Launcher\Crytek\CRYENGINE_5.4\bin\win_x64\CryEngine.Core.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Scripts\Core\BlendMode.cs" />
+    <Compile Include="Scripts\Core\Container.cs" />
+    <Compile Include="Scripts\Core\DisplayObject.cs" />
+    <Compile Include="Scripts\Core\HitTest\MeshColliderHitTest.cs" />
+    <Compile Include="Scripts\Core\Image.cs" />
+    <Compile Include="Scripts\Core\MovieClip.cs" />
+    <Compile Include="Scripts\Core\NGraphics.cs" />
+    <Compile Include="Scripts\Core\NTexture.cs" />
+    <Compile Include="Scripts\Core\PlayState.cs" />
+    <Compile Include="Scripts\Core\Shape.cs" />
+    <Compile Include="Scripts\Core\Stage.cs" />
+    <Compile Include="Scripts\Core\Stats.cs" />
+    <Compile Include="Scripts\Core\Text\BaseFont.cs" />
+    <Compile Include="Scripts\Core\Text\DynamicFont.cs" />
+    <Compile Include="Scripts\Core\Text\FontManager.cs" />
+    <Compile Include="Scripts\Core\Text\IMEAdapter.cs" />
+    <Compile Include="Scripts\Core\Text\SelectionShape.cs" />
+    <Compile Include="Scripts\Core\UpdateContext.cs" />
+    <Compile Include="Scripts\Core\HitTest\HitTestContext.cs" />
+    <Compile Include="Scripts\Core\HitTest\IHitTest.cs" />
+    <Compile Include="Scripts\Core\HitTest\PixelHitTest.cs" />
+    <Compile Include="Scripts\Core\HitTest\RectHitTest.cs" />
+    <Compile Include="Scripts\Core\Text\BitmapFont.cs" />
+    <Compile Include="Scripts\Core\Text\Emoji.cs" />
+    <Compile Include="Scripts\Core\Text\InputTextField.cs" />
+    <Compile Include="Scripts\Core\Text\RichTextField.cs" />
+    <Compile Include="Scripts\Core\Text\TextField.cs" />
+    <Compile Include="Scripts\Core\Text\TextFormat.cs" />
+    <Compile Include="Scripts\Event\EventBridge.cs" />
+    <Compile Include="Scripts\Event\EventContext.cs" />
+    <Compile Include="Scripts\Event\EventDispatcher.cs" />
+    <Compile Include="Scripts\Event\EventListener.cs" />
+    <Compile Include="Scripts\Event\IEventDispatcher.cs" />
+    <Compile Include="Scripts\Event\InputEvent.cs" />
+    <Compile Include="Scripts\Filter\ColorFilter.cs" />
+    <Compile Include="Scripts\Filter\IFilter.cs" />
+    <Compile Include="Scripts\UI\Controller.cs" />
+    <Compile Include="Scripts\UI\DragDropManager.cs" />
+    <Compile Include="Scripts\UI\FieldTypes.cs" />
+    <Compile Include="Scripts\UI\GButton.cs" />
+    <Compile Include="Scripts\UI\GComboBox.cs" />
+    <Compile Include="Scripts\UI\GComponent.cs" />
+    <Compile Include="Scripts\UI\GGraph.cs" />
+    <Compile Include="Scripts\UI\GGroup.cs" />
+    <Compile Include="Scripts\UI\GImage.cs" />
+    <Compile Include="Scripts\UI\GLabel.cs" />
+    <Compile Include="Scripts\UI\GList.cs" />
+    <Compile Include="Scripts\UI\GLoader.cs" />
+    <Compile Include="Scripts\UI\GMovieClip.cs" />
+    <Compile Include="Scripts\UI\GObject.cs" />
+    <Compile Include="Scripts\UI\GObjectPool.cs" />
+    <Compile Include="Scripts\UI\GProgressBar.cs" />
+    <Compile Include="Scripts\UI\GRichTextField.cs" />
+    <Compile Include="Scripts\UI\GRoot.cs" />
+    <Compile Include="Scripts\UI\GScrollBar.cs" />
+    <Compile Include="Scripts\UI\GSlider.cs" />
+    <Compile Include="Scripts\UI\GTextField.cs" />
+    <Compile Include="Scripts\UI\GTextInput.cs" />
+    <Compile Include="Scripts\UI\IUISource.cs" />
+    <Compile Include="Scripts\UI\Margin.cs" />
+    <Compile Include="Scripts\UI\PackageItem.cs" />
+    <Compile Include="Scripts\UI\PageOption.cs" />
+    <Compile Include="Scripts\UI\PopupMenu.cs" />
+    <Compile Include="Scripts\UI\RelationItem.cs" />
+    <Compile Include="Scripts\UI\Relations.cs" />
+    <Compile Include="Scripts\UI\ScrollPane.cs" />
+    <Compile Include="Scripts\UI\Transition.cs" />
+    <Compile Include="Scripts\UI\UIConfig.cs" />
+    <Compile Include="Scripts\UI\UIObjectFactory.cs" />
+    <Compile Include="Scripts\UI\UIPackage.cs" />
+    <Compile Include="Scripts\UI\UIPanel.cs" />
+    <Compile Include="Scripts\UI\Window.cs" />
+    <Compile Include="Scripts\UI\Action\ChangePageAction.cs" />
+    <Compile Include="Scripts\UI\Action\ControllerAction.cs" />
+    <Compile Include="Scripts\UI\Action\PlayTransitionAction.cs" />
+    <Compile Include="Scripts\UI\Gears\GearAnimation.cs" />
+    <Compile Include="Scripts\UI\Gears\GearBase.cs" />
+    <Compile Include="Scripts\UI\Gears\GearColor.cs" />
+    <Compile Include="Scripts\UI\Gears\GearDisplay.cs" />
+    <Compile Include="Scripts\UI\Gears\GearIcon.cs" />
+    <Compile Include="Scripts\UI\Gears\GearLook.cs" />
+    <Compile Include="Scripts\UI\Gears\GearSize.cs" />
+    <Compile Include="Scripts\UI\Gears\GearText.cs" />
+    <Compile Include="Scripts\UI\Gears\GearXY.cs" />
+    <Compile Include="Scripts\UI\Gears\IAnimationGear.cs" />
+    <Compile Include="Scripts\UI\Gears\IColorGear.cs" />
+    <Compile Include="Scripts\UI\Tree\TreeNode.cs" />
+    <Compile Include="Scripts\UI\Tree\TreeView.cs" />
+    <Compile Include="Scripts\Utils\ByteBuffer.cs" />
+    <Compile Include="Scripts\Utils\MatrixHelper.cs" />
+    <Compile Include="Scripts\Utils\Timers.cs" />
+    <Compile Include="Scripts\Utils\ToolSet.cs" />
+    <Compile Include="Scripts\Utils\UBBParser.cs" />
+    <Compile Include="Scripts\Utils\XML.cs" />
+    <Compile Include="Scripts\Utils\XMLIterator.cs" />
+    <Compile Include="Scripts\Utils\XMLList.cs" />
+    <Compile Include="Scripts\Utils\XMLUtils.cs" />
+    <Compile Include="Scripts\Utils\ZipReader.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlButton.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlElement.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlImage.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlInput.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlLink.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlPageContext.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlParseOptions.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlParser.cs" />
+    <Compile Include="Scripts\Utils\Html\HtmlSelect.cs" />
+    <Compile Include="Scripts\Utils\Html\IHtmlObject.cs" />
+    <Compile Include="Scripts\Utils\Html\IHtmlPageContext.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\DOTween\DOTween.csproj">
+      <Project>{de17c145-3e8d-45d6-bbb6-d06bd7d80a55}</Project>
+      <Name>DOTween</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>  -->
+</Project>
