@@ -42,7 +42,7 @@ namespace FairyGUI
 		public void Begin()
 		{
 			current = this;
-			
+
 			alpha = 1;
 			grayed = false;
 			blendMode = BlendMode.Normal;
@@ -55,8 +55,9 @@ namespace FairyGUI
 			Stats.ObjectCount = 0;
 			Stats.GraphicsCount = 0;
 
+#if !CE_5_5
 			Global.gEnv.pRenderer.SetViewport(0, 0, (int)Stage.inst.width, (int)Stage.inst.height);
-
+#endif
 		}
 
 		/// <summary>
@@ -100,7 +101,11 @@ namespace FairyGUI
 
 		void SetScissor(Rect rect)
 		{
+#if CE_5_5
+
+#else
 			Global.gEnv.pRenderer.SetScissor((int)(rect.x), (int)(rect.y), (int)(rect.Width), (int)(rect.Height));
+#endif
 		}
 
 		public void SkipMask(bool value)

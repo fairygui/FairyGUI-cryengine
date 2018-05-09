@@ -5,6 +5,7 @@ using System.Drawing.Drawing2D;
 using CryEngine;
 using CryEngine.Resources;
 using Color = CryEngine.Color;
+using Region = System.Drawing.Region;
 using FairyGUI.Utils;
 
 namespace FairyGUI

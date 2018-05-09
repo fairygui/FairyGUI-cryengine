@@ -32,9 +32,14 @@ namespace FairyGUI
 					return false;
 
 				HitTestContext.raycastDone = true;
-				Vector3 mouseDir = Camera.Unproject((int)HitTestContext.screenPoint.x, (int)HitTestContext.screenPoint.y);
+				Vector3 direction;
+#if CE_5_5
+				Camera.ScreenPointToDirection((int)HitTestContext.screenPoint.x, (int)HitTestContext.screenPoint.y, out direction);
+#else
+				direction = Camera.Unproject((int)HitTestContext.screenPoint.x, (int)HitTestContext.screenPoint.y);
+#endif
 				RaycastHit hit;
-				if (Physics.Raycast(Camera.Position, mouseDir, 100, out hit))
+				if (Physics.Raycast(Camera.Position, direction, 100, out hit))
 				{
 					HitTestContext.hitEntityId = hit.EntityId;
 					HitTestContext.hitUV = hit.UvPoint;

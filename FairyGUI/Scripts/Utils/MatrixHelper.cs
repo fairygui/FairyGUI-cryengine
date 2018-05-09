@@ -14,25 +14,27 @@ namespace FairyGUI.Utils
 			float sinY, cosY;
 			MathHelpers.SinCos(skewY, out sinY, out cosY);
 
-			float m00 = matrix.m00 * cosY - matrix.m10 * sinX;
-			float m10 = matrix.m00 * sinY + matrix.m10 * cosX;
-			float m01 = matrix.m01 * cosY - matrix.m11 * sinX;
-			float m11 = matrix.m01 * sinY + matrix.m11 * cosX;
-			float m02 = matrix.m02 * cosY - matrix.m12 * sinX;
-			float m12 = matrix.m02 * sinY + matrix.m12 * cosX;
+			float m00 = matrix[0, 0] * cosY - matrix[1, 0] * sinX;
+			float m10 = matrix[0, 0] * sinY + matrix[1, 0] * cosX;
+			float m01 = matrix[0, 1] * cosY - matrix[1, 1] * sinX;
+			float m11 = matrix[0, 1] * sinY + matrix[1, 1] * cosX;
+			float m02 = matrix[0, 2] * cosY - matrix[1, 2] * sinX;
+			float m12 = matrix[0, 2] * sinY + matrix[1, 2] * cosX;
 
-			matrix.m00 = m00;
-			matrix.m10 = m10;
-			matrix.m01 = m01;
-			matrix.m11 = m11;
-			matrix.m02 = m02;
-			matrix.m12 = m12;
+			matrix[0, 0] = m00;
+			matrix[1, 0] = m10;
+			matrix[0, 1] = m01;
+			matrix[1, 1] = m11;
+			matrix[0, 2] = m02;
+			matrix[1, 2] = m12;
 		}
 
 		// Matrix4x4.TRS(trans, Quaternion.Euler(euler), scale)
 		public static Matrix4x4 TRS(Vector3 trans, Vector3 euler, Vector3 scale)
 		{
-			return Translate(trans) * Rotate(euler) * Scale(scale);
+			Matrix4x4 mat = Matrix4x4.Identity;
+			mat.SetTranslation(trans);
+			return mat * Rotate(euler) * Scale(scale);
 		}
 
 		// Matrix4x4.TRS(Vector3.zero, Quaternion.Euler(euler), Vector3.one)
@@ -47,11 +49,11 @@ namespace FairyGUI.Utils
 			float rad = MathHelpers.DegreesToRadians(deg);
 			float sin, cos;
 			MathHelpers.SinCos(rad, out sin, out cos);
-			var mat = Matrix4x4.Identity;
-			mat.m11 = cos;
-			mat.m12 = -sin;
-			mat.m21 = sin;
-			mat.m22 = cos;
+			Matrix4x4 mat = Matrix4x4.Identity;
+			mat[1, 1] = cos;
+			mat[1, 2] = -sin;
+			mat[2, 1] = sin;
+			mat[2, 2] = cos;
 			return mat;
 		}
 
@@ -61,11 +63,11 @@ namespace FairyGUI.Utils
 			float rad = MathHelpers.DegreesToRadians(deg);
 			float sin, cos;
 			MathHelpers.SinCos(rad, out sin, out cos);
-			var mat = Matrix4x4.Identity;
-			mat.m22 = cos;
-			mat.m20 = -sin;
-			mat.m02 = sin;
-			mat.m00 = cos;
+			Matrix4x4 mat = Matrix4x4.Identity;
+			mat[2, 2] = cos;
+			mat[2, 0] = -sin;
+			mat[0, 2] = sin;
+			mat[0, 0] = cos;
 			return mat;
 		}
 
@@ -76,31 +78,21 @@ namespace FairyGUI.Utils
 			float rad = MathHelpers.DegreesToRadians(deg);
 			float sin, cos;
 			MathHelpers.SinCos(rad, out sin, out cos);
-			var mat = Matrix4x4.Identity;
-			mat.m00 = cos;
-			mat.m01 = -sin;
-			mat.m10 = sin;
-			mat.m11 = cos;
+			Matrix4x4 mat = Matrix4x4.Identity;
+			mat[0, 0] = cos;
+			mat[0, 1] = -sin;
+			mat[1, 0] = sin;
+			mat[1, 1] = cos;
 			return mat;
 		}
 
 		// Matrix4x4.Scale(scale)
 		public static Matrix4x4 Scale(Vector3 scale)
 		{
-			var mat = Matrix4x4.Identity;
-			mat.m00 = scale.x;
-			mat.m11 = scale.y;
-			mat.m22 = scale.z;
-			return mat;
-		}
-
-		// Matrix4x4.TRS(vec, Quaternion.identity, Vector3.one)
-		public static Matrix4x4 Translate(Vector3 vec)
-		{
-			var mat = Matrix4x4.Identity;
-			mat.m03 = vec.x;
-			mat.m13 = vec.y;
-			mat.m23 = vec.z;
+			Matrix4x4 mat = Matrix4x4.Identity;
+			mat[0, 0] = scale.x;
+			mat[1, 1] = scale.y;
+			mat[2, 2] = scale.z;
 			return mat;
 		}
 	}

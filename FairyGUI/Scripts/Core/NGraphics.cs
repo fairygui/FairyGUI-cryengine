@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using CryEngine;
 using CryEngine.Common;
 using FairyGUI.Utils;
+using CryEngine.Resources;
 
 namespace FairyGUI
 {
@@ -96,6 +97,15 @@ namespace FairyGUI
 
 				if (renderTarget == null)
 				{
+#if CE_5_5
+					IRenderAuxImage.Draw2dImage(
+						(rect.x + x) * viewortScaleFactor.x, (rect.y + y) * viewortScaleFactor.y,
+						w * viewortScaleFactor.x, h * viewortScaleFactor.y,
+						_texture.ID,
+						uv0.x, uv0.y, uv2.x, uv2.y,
+						rotation,
+						quad.color.R, quad.color.G, quad.color.B, quad.color.A * alpha);
+#else
 					Global.gEnv.pRenderer.Draw2dImage(
 						(rect.x + x) * viewortScaleFactor.x, (rect.y + y) * viewortScaleFactor.y,
 						w * viewortScaleFactor.x, h * viewortScaleFactor.y,
@@ -103,14 +113,19 @@ namespace FairyGUI
 						uv0.x, uv0.y, uv2.x, uv2.y,
 						rotation,
 						quad.color.R, quad.color.G, quad.color.B, quad.color.A * alpha);
+#endif
 				}
 				else
 				{
+#if CE_5_5
+
+#else
 					Global.gEnv.pRenderer.PushUITexture(_texture.ID, renderTarget.texture.ID,
 						 (rect.x + x - renderTarget.origin.x) / renderTarget.texture.width, (rect.y + y - renderTarget.origin.y) / renderTarget.texture.height,
 						 w / renderTarget.texture.width, h / renderTarget.texture.height,
 						 uv0.x, uv0.y, uv2.x, uv2.y,
 						 quad.color.R, quad.color.G, quad.color.B, quad.color.A * alpha);
+#endif
 				}
 			}
 

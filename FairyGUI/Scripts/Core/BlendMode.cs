@@ -121,7 +121,9 @@ namespace FairyGUI
 		public static void Apply(BlendMode blendMode)
 		{
 			int index = (int)blendMode * 2;
+#if !CE_5_5
 			Global.gEnv.pRenderer.SetState(/*GS_NODEPTHTEST*/0x00000200 | Factors[index] | Factors[index + 1]);
+#endif
 		}
 
 		/// <summary>
