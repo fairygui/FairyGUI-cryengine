@@ -512,6 +512,8 @@ namespace FairyGUI
 			stringFormat.FormatFlags = StringFormatFlags.NoClip;
 			if (!wrap)
 				stringFormat.FormatFlags |= StringFormatFlags.NoWrap;
+			if (_input)
+				stringFormat.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
 			int charactersFitte;
 			int linesFilled;
 
@@ -919,6 +921,8 @@ namespace FairyGUI
 
 				stringFormat = new StringFormat();
 				stringFormat.FormatFlags = StringFormatFlags.NoClip | StringFormatFlags.NoWrap;
+				if (_input)
+					stringFormat.FormatFlags |= StringFormatFlags.MeasureTrailingSpaces;
 
 				brush = new SolidBrush(format.color.ToSystemColor());
 				if (_stroke != 0)

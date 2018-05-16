@@ -374,6 +374,32 @@ namespace FairyGUI
 			}
 		}
 
+		private static Dictionary<KeyId, string> _charByScanCode1 = new Dictionary<KeyId, string>
+		{
+			{ KeyId.Alpha1, "1"},{ KeyId.Alpha2, "2"},{ KeyId.Alpha3, "3"},{ KeyId.Alpha4, "4"},{ KeyId.Alpha5, "5"},
+			{ KeyId.Alpha6, "6"},{ KeyId.Alpha7, "7"},{ KeyId.Alpha8, "8"},{ KeyId.Alpha9, "9"},{ KeyId.Alpha0, "0"},
+			{ KeyId.Minus, "-"},{ KeyId.Equals, "="},{ KeyId.LBracket, "["},{ KeyId.RBracket, "]"},{ KeyId.Backslash, "\\"},
+			{ KeyId.Semicolon, ";"},{ KeyId.Apostrophe, "'"},{ KeyId.Comma, ","},{ KeyId.Period, "."},{ KeyId.Slash, "/"},
+			{ KeyId.Enter, "\n" }, {KeyId.Tab, "\t" }, {KeyId.Space, " " }, {KeyId.Tilde, "`" }
+		};
+
+		private static Dictionary<KeyId, string> _charByScanCode2 = new Dictionary<KeyId, string>
+		{
+			{ KeyId.Alpha1, "!"},{ KeyId.Alpha2, "@"},{ KeyId.Alpha3, "#"},{ KeyId.Alpha4, "$"},{ KeyId.Alpha5, "%"},
+			{ KeyId.Alpha6, "^"},{ KeyId.Alpha7, "&"},{ KeyId.Alpha8, "*"},{ KeyId.Alpha9, "("},{ KeyId.Alpha0, ")"},
+			{ KeyId.Minus, "_"},{ KeyId.Equals, "+"},{ KeyId.LBracket, "{"},{ KeyId.RBracket, "}"},{ KeyId.Backslash, "|"},
+			{ KeyId.Semicolon, ":"},{ KeyId.Apostrophe, "\""},{ KeyId.Comma, "<"},{ KeyId.Period, ">"},{ KeyId.Slash, "?"},
+			{KeyId.Tilde, "~" }
+		};
+
+		private static Dictionary<KeyId, string> _charByScanCode3 = new Dictionary<KeyId, string>
+		{
+			{ KeyId.NP_1, "1"},{ KeyId.NP_2, "2"},{ KeyId.NP_3, "3"},{ KeyId.NP_4, "4"},{ KeyId.NP_5, "5"},
+			{ KeyId.NP_6, "6"},{ KeyId.NP_7, "7"},{ KeyId.NP_8, "8"},{ KeyId.NP_9, "9"},{ KeyId.NP_0, "0"},
+			{ KeyId.NP_Add, "+"},{ KeyId.NP_Divide, "/"},{ KeyId.NP_Enter, "\n"},{ KeyId.NP_Multiply, "*"},{ KeyId.NP_Period, "."},
+			{ KeyId.NP_Substract, "-"}
+		};
+
 		void OnKeyEvents(CryEngine.InputEvent evt)
 		{
 			//这里主要处理连按的逻辑，第一次收到按下通知后立刻发出键盘事件，然后延迟一段时间，如果后续还有down通知，按照一定频率触发键盘事件。
@@ -402,8 +428,38 @@ namespace FairyGUI
 				return;
 
 			_touchInfo.keyCode = evt.KeyId;
-			_touchInfo.keyName = evt.KeyName;
+			_touchInfo.keyName = null;
 			_touchInfo.modifiers = evt.InputModifiers;
+
+			bool shift = (evt.InputModifiers & InputModifierFlags.Shift) != 0;
+			//evt.keyName is not reliable, I parse it myself.
+			if (evt.KeyId >= KeyId.Q && evt.KeyId <= KeyId.P
+				|| evt.KeyId >= KeyId.A && evt.KeyId <= KeyId.L
+				|| evt.KeyId >= KeyId.Z && evt.KeyId <= KeyId.M)
+			{
+				bool capsLock = (evt.InputModifiers & InputModifierFlags.CapsLock) != 0;
+				if (shift)
+					capsLock = !capsLock;
+				if (capsLock)
+					_touchInfo.keyName = evt.KeyName.ToUpper();
+				else
+					_touchInfo.keyName = evt.KeyName;
+			}
+			else
+			{
+				if (_charByScanCode3.TryGetValue(evt.KeyId, out _touchInfo.keyName))
+				{
+					if ((evt.InputModifiers & InputModifierFlags.NumLock) == 0)
+						_touchInfo.keyName = null;
+				}
+				else if (shift)
+				{
+					if (!_charByScanCode2.TryGetValue(evt.KeyId, out _touchInfo.keyName))
+						_charByScanCode1.TryGetValue(evt.KeyId, out _touchInfo.keyName);
+				}
+				else
+					_charByScanCode1.TryGetValue(evt.KeyId, out _touchInfo.keyName);
+			}
 
 			_touchInfo.UpdateEvent();
 			DisplayObject f = this.focus;
