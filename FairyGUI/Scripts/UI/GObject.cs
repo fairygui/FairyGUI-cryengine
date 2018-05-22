@@ -515,7 +515,7 @@ namespace FairyGUI
 
 				if (parent != null)
 				{
-					relations.OnOwnerSizeChanged(dWidth, dHeight);
+					relations.OnOwnerSizeChanged(dWidth, dHeight, _pivotAsAnchor || !ignorePivot);
 					parent.SetBoundsChangedFlag();
 					if (_group != null)
 						_group.SetBoundsChangedFlag(true);
@@ -535,6 +535,42 @@ namespace FairyGUI
 				hv = 0;
 			_width = wv;
 			_height = hv;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public float xMin
+		{
+			get
+			{
+				return _pivotAsAnchor ? (_x - _width * _pivotX) : _x;
+			}
+			set
+			{
+				if (_pivotAsAnchor)
+					SetPosition(value + _width * _pivotX, _y, _z);
+				else
+					SetPosition(value, _y, _z);
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public float yMin
+		{
+			get
+			{
+				return _pivotAsAnchor ? (_y - _height * _pivotY) : _y;
+			}
+			set
+			{
+				if (_pivotAsAnchor)
+					SetPosition(_x, value + _height * _pivotY, _z);
+				else
+					SetPosition(_x, value, _z);
+			}
 		}
 
 		/// <summary>
@@ -648,6 +684,11 @@ namespace FairyGUI
 				if (_sizeImplType == 1 || _pivotAsAnchor) //displayObject的轴心参考宽高与GObject的参看宽高不一样的情况下，需要调整displayObject的位置
 					HandlePositionChanged();
 			}
+		}
+
+		public bool pivotAsAnchor
+		{
+			get { return _pivotAsAnchor; }
 		}
 
 		/// <summary>

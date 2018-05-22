@@ -347,14 +347,15 @@ namespace FairyGUI
 		/// </summary>
 		/// <param name="dWidth"></param>
 		/// <param name="dHeight"></param>
-		public void OnOwnerSizeChanged(float dWidth, float dHeight)
+		/// <param name="applyPivot"></param>
+		public void OnOwnerSizeChanged(float dWidth, float dHeight, bool applyPivot)
 		{
 			int cnt = _items.Count;
 			if (cnt == 0)
 				return;
 
 			for (int i = 0; i < cnt; i++)
-				_items[i].ApplyOnSelfSizeChanged(dWidth, dHeight);
+				_items[i].ApplyOnSelfSizeChanged(dWidth, dHeight, applyPivot);
 		}
 
 		/// <summary>
