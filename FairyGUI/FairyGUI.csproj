@@ -119,6 +119,7 @@
     <Compile Include="Scripts\UI\ScrollPane.cs" />
     <Compile Include="Scripts\UI\Transition.cs" />
     <Compile Include="Scripts\UI\UIConfig.cs" />
+    <Compile Include="Scripts\UI\UIContentScaler.cs" />
     <Compile Include="Scripts\UI\UIObjectFactory.cs" />
     <Compile Include="Scripts\UI\UIPackage.cs" />
     <Compile Include="Scripts\UI\UIPanel.cs" />
