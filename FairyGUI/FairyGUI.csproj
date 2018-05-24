@@ -35,6 +35,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="DOTween">
+      <HintPath>..\Libs\DOTween.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.XML" />
@@ -161,12 +164,6 @@
     <Compile Include="Scripts\Utils\Html\HtmlSelect.cs" />
     <Compile Include="Scripts\Utils\Html\IHtmlObject.cs" />
     <Compile Include="Scripts\Utils\Html\IHtmlPageContext.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\DOTween\DOTween.csproj">
-      <Project>{de17c145-3e8d-45d6-bbb6-d06bd7d80a55}</Project>
-      <Name>DOTween</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
