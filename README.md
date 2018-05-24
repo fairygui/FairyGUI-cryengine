@@ -4,7 +4,7 @@ FairyGUI for CryEngine
 FairyGUI is a Cross Platform UI Editor & UI framework.
 [Get FairyGUI-Editor](http://en.fairygui.com/product)  
 
-FairyGUI Editor is a professional Game UI Editor, easy to use, no need to write code and write any configuration files, you can build a variety of complex game interface, support Unity、Cocos2dx、Cry Engine、 Havok Vision/Project Anarchy、Egret、LayaAir、Haxe、Pixi、Flash、Starling，and Unreal、LibGDX、Three.js in the future.<br>
+By using FairyGUI Editor, you can build a variety of complex game interface without writing code or any configuration files. Support Unity、Cocos2dx、Cry Engine、 Havok Vision/Project Anarchy、Egret、LayaAir、Haxe、Pixi、Flash、Starling，and Unreal、LibGDX、Three.js in the future.<br>
 
 Features
 ====
