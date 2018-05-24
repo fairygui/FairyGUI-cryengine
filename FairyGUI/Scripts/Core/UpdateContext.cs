@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using CryEngine;
 using CryEngine.Common;
 using FairyGUI.Utils;
@@ -104,7 +105,10 @@ namespace FairyGUI
 #if CE_5_5
 
 #else
-			Global.gEnv.pRenderer.SetScissor((int)(rect.x), (int)(rect.y), (int)(rect.Width), (int)(rect.Height));
+			int rectX = (int)Math.Floor(rect.x);
+			int rectY = (int)Math.Floor(rect.y);
+			Global.gEnv.pRenderer.SetScissor(rectX, rectY,
+				(int)Math.Ceiling(rect.x + rect.Width) - rectX, (int)Math.Ceiling(rect.y + rect.Height) - rectY);
 #endif
 		}
 

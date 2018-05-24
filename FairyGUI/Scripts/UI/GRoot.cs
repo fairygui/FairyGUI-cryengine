@@ -39,9 +39,13 @@ namespace FairyGUI
 			Stage.inst.onTouchBegin.AddCapture(__stageTouchBegin);
 		}
 
+		/// <summary>
+		/// This is called after screen size changed.
+		/// </summary>
 		public void ApplyContentScaleFactor()
 		{
-			this.SetSize(Stage.inst.width, Stage.inst.height);
+			this.SetSize((float)Math.Ceiling(Stage.inst.width / UIContentScaler.scaleFactor), (float)Math.Ceiling(Stage.inst.height / UIContentScaler.scaleFactor));
+			this.SetScale(UIContentScaler.scaleFactor, UIContentScaler.scaleFactor);
 		}
 
 		/// <summary>
@@ -396,7 +400,6 @@ namespace FairyGUI
 					xx += size.x / 2;
 				}
 			}
-
 			return new Vector2((int)Math.Round(xx), (int)Math.Round(yy));
 		}
 

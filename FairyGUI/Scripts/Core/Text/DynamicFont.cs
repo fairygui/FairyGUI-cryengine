@@ -10,59 +10,45 @@ namespace FairyGUI
 	/// </summary>
 	public class DynamicFont : BaseFont
 	{
-		Font _font;
 		int _size;
 		FontStyle _style;
+
+		static Dictionary<int, Font> sFontCache = new Dictionary<int, Font>();
 
 		public DynamicFont(string name)
 		{
 			this.name = name;
-			this.scaleEnabled = this.colorEnabled = true;
-			LoadFont();
-		}
-
-		void LoadFont()
-		{
 		}
 
 		override public void SetFormat(TextFormat format, float fontSizeScale)
 		{
-			int size;
 			if (fontSizeScale == 1)
-				size = format.size;
+				_size = format.size;
 			else
-				size = (int)Math.Floor((float)format.size * fontSizeScale);
+				_size = (int)Math.Floor((float)format.size * fontSizeScale);
 
-			FontStyle style = FontStyle.Regular;
+			_style = FontStyle.Regular;
 			if (format.bold)
-				style |= FontStyle.Bold;
+				_style |= FontStyle.Bold;
 			if (format.italic)
-				style |= FontStyle.Italic;
+				_style |= FontStyle.Italic;
 			if (format.underline)
-				style |= FontStyle.Underline;
+				_style |= FontStyle.Underline;
+		}
 
-			if (_font == null || _size != size || style != _style)
+		public Font GetNativeFont(bool applyGlobalScale)
+		{
+			int size = applyGlobalScale ? (int)Math.Floor(_size * UIContentScaler.scaleFactor) : _size;
+
+			int key = (size << 16) + (int)_style;
+			Font result;
+			if (!sFontCache.TryGetValue(key, out result))
 			{
-				_size = size;
-				_style = style;
-				_font = new Font(this.name, size, style, GraphicsUnit.Pixel);
+				result = new Font(this.name, size, _style, GraphicsUnit.Pixel);
+				sFontCache[key] = result;
 			}
-		}
 
-		public Font nativeFont
-		{
-			get { return _font; }
-		}
-
-		override public bool GetGlyphSize(char ch, out float width, out float height)
-		{
-			width = height = 0;
-			return false;
-		}
-
-		override public bool GetGlyph(char ch, GlyphInfo glyph)
-		{
-			return false;
+			return result;
 		}
 	}
 }

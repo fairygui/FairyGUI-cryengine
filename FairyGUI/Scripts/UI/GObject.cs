@@ -1377,8 +1377,8 @@ namespace FairyGUI
 			if (r == null || r == GRoot.inst)
 			{
 				//fast
-				pt.x /= 1;// GRoot.contentScaleFactor;
-				pt.y /= 1;// GRoot.contentScaleFactor;
+				pt.x /= UIContentScaler.scaleFactor;
+				pt.y /= UIContentScaler.scaleFactor;
 			}
 			else
 				return r.GlobalToLocal(pt);
@@ -1397,8 +1397,8 @@ namespace FairyGUI
 			if (r == null || r == GRoot.inst)
 			{
 				//fast
-				pt.x *= 1;// GRoot.contentScaleFactor;
-				pt.y *= 1;// GRoot.contentScaleFactor;
+				pt.x *= UIContentScaler.scaleFactor;
+				pt.y *= UIContentScaler.scaleFactor;
 			}
 			else
 				pt = r.LocalToGlobal(pt);

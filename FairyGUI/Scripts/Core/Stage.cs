@@ -297,13 +297,13 @@ namespace FairyGUI
 		{
 			SetSize(Renderer.ScreenWidth, Renderer.ScreenHeight);
 #if CE_5_5
-			NGraphics.viewortScaleFactor = new Vector2(1, 1);
+			NGraphics.viewportReverseScale = new Vector2(1, 1);
 #else
-			NGraphics.viewortScaleFactor = new Vector2(800.0f / this.width, 600.0f / this.height);
+			NGraphics.viewportReverseScale = new Vector2(800.0f / this.width, 600.0f / this.height);
 #endif
 
 			if (lw != 0 && lh != 0)
-				GRoot.inst.ApplyContentScaleFactor();
+				UIContentScaler.ApplyChange();
 		}
 
 		internal void HandleMouseEvents(int iX, int iY, EHARDWAREMOUSEEVENT eHardwareMouseEvent, int wheelDelta)

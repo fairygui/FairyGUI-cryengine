@@ -21,6 +21,7 @@ namespace FairyGUI
 		public bool enabled;
 		public bool skipMask;
 		public BlendMode blendMode;
+		public bool pixelSnapping;
 
 		class Quad
 		{
@@ -32,7 +33,7 @@ namespace FairyGUI
 		int _quadCount;
 		NTexture _texture;
 
-		internal static Vector2 viewortScaleFactor;
+		internal static Vector2 viewportReverseScale;
 
 		public NGraphics()
 		{
@@ -79,10 +80,15 @@ namespace FairyGUI
 			for (int i = 0; i < _quadCount; i++)
 			{
 				Quad quad = _quads[i];
-				float x = quad.drawRect.x * scale.x;
-				float y = quad.drawRect.y * scale.y;
-				float w = quad.drawRect.Width * scale.x;
-				float h = quad.drawRect.Height * scale.y;
+				float x, y, w, h;
+				x = quad.drawRect.x * scale.x;
+				y = quad.drawRect.y * scale.y;
+				w = quad.drawRect.Width * scale.x;
+				h = quad.drawRect.Height * scale.y;
+				if (quad.drawRect.Width >= 1 && w < 1)
+					w = 1;
+				if (quad.drawRect.Height >= 1 && h < 1)
+					h = 1;
 				Vector2 uv0 = quad.uv[0];
 				Vector2 uv2 = quad.uv[2];
 
@@ -97,18 +103,27 @@ namespace FairyGUI
 
 				if (renderTarget == null)
 				{
+					if (pixelSnapping)
+					{
+						x = (float)Math.Floor(rect.x + x) * viewportReverseScale.x;
+						y = (float)Math.Floor(rect.y + y) * viewportReverseScale.y;
+					}
+					else
+					{
+						x = (rect.x + x) * viewportReverseScale.x;
+						y = (rect.y + y) * viewportReverseScale.y;
+					}
+
+					w *= viewportReverseScale.x;
+					h *= viewportReverseScale.y;
 #if CE_5_5
-					IRenderAuxImage.Draw2dImage(
-						(rect.x + x) * viewortScaleFactor.x, (rect.y + y) * viewortScaleFactor.y,
-						w * viewortScaleFactor.x, h * viewortScaleFactor.y,
+					IRenderAuxImage.Draw2dImage(x, y, w, h
 						_texture.ID,
 						uv0.x, uv0.y, uv2.x, uv2.y,
 						rotation,
 						quad.color.R, quad.color.G, quad.color.B, quad.color.A * alpha);
 #else
-					Global.gEnv.pRenderer.Draw2dImage(
-						(rect.x + x) * viewortScaleFactor.x, (rect.y + y) * viewortScaleFactor.y,
-						w * viewortScaleFactor.x, h * viewortScaleFactor.y,
+					Global.gEnv.pRenderer.Draw2dImage(x, y, w, h,
 						_texture.ID,
 						uv0.x, uv0.y, uv2.x, uv2.y,
 						rotation,

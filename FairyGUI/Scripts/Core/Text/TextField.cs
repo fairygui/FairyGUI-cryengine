@@ -40,6 +40,7 @@ namespace FairyGUI
 		bool _textChanged;
 		int _yOffset;
 		float _fontSizeScale;
+		float _globalScale;
 		Bitmap _canvas;
 		NTexture _texture;
 
@@ -55,6 +56,7 @@ namespace FairyGUI
 			_textFormat = new TextFormat();
 			_strokeColor = Color.Black;
 			_fontSizeScale = 1;
+			_globalScale = UIContentScaler.scaleFactor;
 
 			_wordWrap = false;
 			_text = string.Empty;
@@ -64,6 +66,7 @@ namespace FairyGUI
 			_renderElements = new List<RenderElement>(1);
 
 			graphics = new NGraphics();
+			graphics.pixelSnapping = true;
 		}
 
 		public override void Dispose()
@@ -331,6 +334,9 @@ namespace FairyGUI
 		/// </summary>
 		public bool Rebuild()
 		{
+			if (_globalScale != UIContentScaler.scaleFactor)
+				_textChanged = true;
+
 			if (_textChanged)
 				BuildLines();
 
@@ -446,7 +452,7 @@ namespace FairyGUI
 				if (_font is DynamicFont)
 					graphics.texture = _texture;
 				else
-					graphics.texture = _font.mainTexture;
+					graphics.texture = ((BitmapFont)_font).mainTexture;
 			}
 		}
 
@@ -454,6 +460,7 @@ namespace FairyGUI
 		{
 			_textChanged = false;
 			_requireUpdateMesh = true;
+			_globalScale = UIContentScaler.scaleFactor;
 
 			if (_font == null)
 				ResolveFont();
@@ -488,6 +495,7 @@ namespace FairyGUI
 			bool wordPossible = false;
 			int supSpace = 0, subSpace = 0;
 
+			bool systemFont = _font is DynamicFont;
 			TextFormat format = _textFormat;
 			_font.SetFormat(format, _fontSizeScale);
 			bool wrap = _wordWrap && !_singleLine;
@@ -506,7 +514,6 @@ namespace FairyGUI
 			if (elementCount > 0)
 				element = _elements[0];
 
-			bool systemFont = _font is DynamicFont;
 			Graphics nativeGraphics = Graphics.FromHwnd(IntPtr.Zero);
 			StringFormat stringFormat = new StringFormat();
 			stringFormat.FormatFlags = StringFormatFlags.NoClip;
@@ -632,9 +639,11 @@ namespace FairyGUI
 				if (systemFont)
 				{
 					SizeF measureRect = new SizeF(wrap ? (_contentRect.Width - line.width) : int.MaxValue, format.size);
+					Font measureFont = ((DynamicFont)_font).GetNativeFont(false);
 					while (true)
 					{
-						measureRect = nativeGraphics.MeasureString(textBlock, ((DynamicFont)_font).nativeFont, measureRect, stringFormat, out charactersFitte, out linesFilled);
+						measureRect = nativeGraphics.MeasureString(textBlock, measureFont, measureRect, stringFormat, out charactersFitte, out linesFilled);
+
 						measureRect.Width -= GUTTER_X * 2;
 
 						if (measureRect.Height > line.textHeight)
@@ -723,7 +732,7 @@ namespace FairyGUI
 								wordPossible = false;
 							}
 
-							if (_font.GetGlyphSize(ch, out glyphWidth, out glyphHeight))
+							if (((BitmapFont)_font).GetGlyphSize(ch, out glyphWidth, out glyphHeight))
 							{
 								if (glyphHeight > line.textHeight)
 									line.textHeight = glyphHeight;
@@ -901,8 +910,8 @@ namespace FairyGUI
 			int canvasWidth = 0, canvasHeight = 0;
 			if (systemFont)
 			{
-				canvasWidth = (int)Math.Max(_textWidth, _contentRect.Width);
-				canvasHeight = (int)Math.Max(_textHeight, _contentRect.Height);
+				canvasWidth = (int)Math.Ceiling(Math.Max(_textWidth, _contentRect.Width) * _globalScale);
+				canvasHeight = (int)Math.Ceiling(Math.Max(_textHeight, _contentRect.Height) * _globalScale);
 				if (_canvas == null || _canvas.Width < canvasWidth || _canvas.Height < canvasHeight)
 				{
 					if (_canvas != null)
@@ -1037,9 +1046,10 @@ namespace FairyGUI
 				}
 				else if (systemFont)
 				{
-					Font font = ((DynamicFont)_font).nativeFont;
 					if (!lineClipped)
 					{
+						Font measureFont = ((DynamicFont)_font).GetNativeFont(false);
+
 						yIndent = (int)((line.height + line.textHeight) / 2 - re.measureHeight);
 						float charX2 = charX - GUTTER_X;
 
@@ -1053,7 +1063,7 @@ namespace FairyGUI
 								if (characterRanges.Count == 32 || ti == textLength - 1)
 								{
 									stringFormat.SetMeasurableCharacterRanges(characterRanges.ToArray());
-									Region[] regions = nativeGraphics.MeasureCharacterRanges(re.text, font, new RectangleF(0, 0, int.MaxValue, int.MaxValue), stringFormat);
+									Region[] regions = nativeGraphics.MeasureCharacterRanges(re.text, measureFont, new RectangleF(0, 0, int.MaxValue, int.MaxValue), stringFormat);
 									foreach (Region region in regions)
 									{
 										RectangleF rectF = region.GetBounds(nativeGraphics);
@@ -1068,19 +1078,27 @@ namespace FairyGUI
 							}
 						}
 
+						Font drawFont = ((DynamicFont)_font).GetNativeFont(true);
 						brush.Color = format.color.ToSystemColor();
 						if (shadowBrush != null)
-							nativeGraphics.DrawString(re.text, font, shadowBrush, charX2 + _shadowOffset.x, line.y + yIndent + _shadowOffset.y, stringFormat);
+							nativeGraphics.DrawString(re.text, drawFont, shadowBrush,
+								(float)Math.Floor((charX2 + _shadowOffset.x) * _globalScale),
+								(float)Math.Floor((line.y + yIndent + _shadowOffset.y) * _globalScale),
+								stringFormat);
 
 						if (outlinePen == null)
 						{
-							nativeGraphics.DrawString(re.text, font, brush, charX2, line.y + yIndent, stringFormat);
+							nativeGraphics.DrawString(re.text, drawFont, brush,
+								(float)Math.Floor(charX2 * _globalScale),
+								(float)Math.Floor((line.y + yIndent) * _globalScale),
+								stringFormat);
 						}
 						else
 						{
 							outlinePath.Reset();
-							outlinePath.AddString(re.text, font.FontFamily, (int)font.Style, font.Size,
-								new PointF(charX2, line.y + yIndent), stringFormat);
+							outlinePath.AddString(re.text, drawFont.FontFamily, (int)drawFont.Style, drawFont.Size,
+								new PointF((float)Math.Floor(charX2 * _globalScale), (float)Math.Floor((line.y + yIndent) * _globalScale)),
+								stringFormat);
 
 							nativeGraphics.FillPath(brush, outlinePath);
 							nativeGraphics.DrawPath(outlinePen, outlinePath);
@@ -1105,7 +1123,7 @@ namespace FairyGUI
 							_charPositions.Add(cp);
 						}
 
-						if (_font.GetGlyph(ch, glyph))
+						if (((BitmapFont)_font).GetGlyph(ch, glyph))
 						{
 							if (lineClipped || clipped && charX != 0 && charX + glyph.width > _contentRect.Width - GUTTER_X + 0.5f) //超出区域，剪裁
 							{
@@ -1121,7 +1139,8 @@ namespace FairyGUI
 							else
 								lastGlyphHeight = glyph.height;
 
-							graphics.AddQuad(new Rect(charX + glyph.vert.x, line.y + yIndent + glyph.vert.y, glyph.vert.Width, glyph.vert.Height), glyph.uv, _font.colorEnabled ? color : Color.White);
+							graphics.AddQuad(new Rect(charX + glyph.vert.x, line.y + yIndent + glyph.vert.y, glyph.vert.Width, glyph.vert.Height), glyph.uv,
+								((BitmapFont)_font).colorEnabled ? color : Color.White);
 
 							charX += letterSpacing + glyph.width;
 						}
@@ -1159,8 +1178,8 @@ namespace FairyGUI
 				}
 				else
 					_texture.nativeTexture.UpdateData(_texture.width, _texture.height, data);
-
-				graphics.AddQuad(new Rect(0, 0, canvasWidth, canvasHeight), new Rect(0, 0, (float)canvasWidth / _canvas.Width, (float)canvasHeight / _canvas.Height), Color.White);
+				graphics.AddQuad(new Rect(0, 0, canvasWidth / _globalScale, canvasHeight / _globalScale),
+					new Rect(0, 1 - (float)canvasHeight / _canvas.Height, (float)canvasWidth / _canvas.Width, (float)canvasHeight / _canvas.Height), Color.White);
 			}
 
 			if (_richTextField != null)
