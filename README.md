@@ -24,6 +24,8 @@ Features
 Getting Started
 ====
 
+**If you are using CryEngine 5.5 version, add predefined macro CE_5_5 in build settings.**
+
 [Find Examples Here](https://github.com/fairygui/FairyGUI-cryengine-examples)
 
 License
