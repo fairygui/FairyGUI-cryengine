@@ -100,10 +100,6 @@ namespace FairyGUI
 					scaleFactor = 10;
 			}
 
-#if !CE_5_5
-			//scaleFactor *= 800.0f / this.width, 600.0f / this.height);
-#endif
-
 			int cnt = Stage.inst.numChildren;
 			for (int i = 0; i < cnt; i++)
 			{

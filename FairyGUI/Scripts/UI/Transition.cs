@@ -357,7 +357,7 @@ namespace FairyGUI
 						break;
 
 					case TransitionActionType.Rotation:
-						value.f1 = Convert.ToInt32(aParams[0]);
+						value.f1 = Convert.ToSingle(aParams[0]);
 						break;
 
 					case TransitionActionType.Color:
@@ -572,7 +572,11 @@ namespace FairyGUI
 					else
 						startTime += item.time;
 					if (startTime == 0)
+					{
 						ApplyValue(item, item.value);
+						if (item.hook != null)
+							item.hook();
+					}
 					else
 					{
 						item.completed = false;

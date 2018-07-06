@@ -302,8 +302,7 @@ namespace FairyGUI
 			NGraphics.viewportReverseScale = new Vector2(800.0f / this.width, 600.0f / this.height);
 #endif
 
-			if (lw != 0 && lh != 0)
-				UIContentScaler.ApplyChange();
+			UIContentScaler.ApplyChange();
 		}
 
 		internal void HandleMouseEvents(int iX, int iY, EHARDWAREMOUSEEVENT eHardwareMouseEvent, int wheelDelta)

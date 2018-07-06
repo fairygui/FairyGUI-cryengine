@@ -20,6 +20,7 @@ namespace FairyGUI
 		VertAlignType _verticalAlign;
 		bool _autoSize;
 		FillType _fill;
+		bool _shrinkOnly;
 		bool _updatingLayout;
 		PackageItem _contentItem;
 		float _contentWidth;
@@ -28,6 +29,7 @@ namespace FairyGUI
 		float _contentSourceHeight;
 
 		MovieClip _content;
+		GComponent _content2;
 		GObject _errorSign;
 
 		static GObjectPool errorSignPool;
@@ -58,6 +60,8 @@ namespace FairyGUI
 			}
 			if (_errorSign != null)
 				_errorSign.Dispose();
+			if (_content2 != null)
+				_content2.Dispose();
 			_content.Dispose();
 			base.Dispose();
 		}
@@ -136,6 +140,22 @@ namespace FairyGUI
 		/// <summary>
 		/// 
 		/// </summary>
+		public bool shrinkOnly
+		{
+			get { return _shrinkOnly; }
+			set
+			{
+				if (_shrinkOnly != value)
+				{
+					_shrinkOnly = value;
+					UpdateLayout();
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
 		public bool autoSize
 		{
 			get { return _autoSize; }
@@ -202,6 +222,11 @@ namespace FairyGUI
 		public MovieClip movieClip
 		{
 			get { return _content; }
+		}
+
+		public GComponent component
+		{
+			get { return _content2; }
 		}
 
 		/// <summary>
@@ -292,6 +317,26 @@ namespace FairyGUI
 
 					UpdateLayout();
 				}
+				else if (_contentItem.type == PackageItemType.Component)
+				{
+					_contentSourceWidth = _contentItem.width;
+					_contentSourceHeight = _contentItem.height;
+
+					GObject obj = UIPackage.CreateObjectFromURL(itemURL);
+					if (obj == null)
+						SetErrorState();
+					else if (!(obj is GComponent))
+					{
+						obj.Dispose();
+						SetErrorState();
+					}
+					else
+					{
+						_content2 = (GComponent)obj;
+						((Container)displayObject).AddChild(_content2.displayObject);
+						UpdateLayout();
+					}
+				}
 				else
 				{
 					if (_autoSize)
@@ -365,7 +410,7 @@ namespace FairyGUI
 
 		private void UpdateLayout()
 		{
-			if (_content.texture == null && _content.frameCount == 0)
+			if (_content2 == null && _content.texture == null && _content.frameCount == 0)
 			{
 				if (_autoSize)
 				{
@@ -391,9 +436,18 @@ namespace FairyGUI
 
 				if (_width == _contentWidth && _height == _contentHeight)
 				{
-					_content.SetScale(1, 1);
-					if (_content.texture != null)
-						_content.SetNativeSize();
+					if (_content2 != null)
+					{
+						_content2.SetPosition(0, 0);
+						_content2.SetScale(1, 1);
+					}
+					else
+					{
+						_content.SetPosition(0, 0);
+						_content.SetScale(1, 1);
+						if (_content.texture != null)
+							_content.SetNativeSize();
+					}
 					return;
 				}
 				//如果不相等，可能是由于大小限制造成的，要后续处理
@@ -425,12 +479,25 @@ namespace FairyGUI
 						else
 							sx = sy;
 					}
+
+					if (_shrinkOnly)
+					{
+						if (sx > 1)
+							sx = 1;
+						if (sy > 1)
+							sy = 1;
+					}
+
 					_contentWidth = (int)Math.Floor(_contentSourceWidth * sx);
 					_contentHeight = (int)Math.Floor(_contentSourceHeight * sy);
 				}
 			}
 
-			if (_content.texture != null)
+			if (_content2 != null)
+			{
+				_content2.SetScale(sx, sy);
+			}
+			else if (_content.texture != null)
 			{
 				_content.SetScale(1, 1);
 				_content.size = new Vector2(_contentWidth, _contentHeight);
@@ -452,7 +519,10 @@ namespace FairyGUI
 				ny = (int)Math.Floor(this.height - _contentHeight);
 			else
 				ny = 0;
-			_content.SetPosition(nx, ny, 0);
+			if (_content2 != null)
+				_content2.SetPosition(nx, ny);
+			else
+				_content.SetPosition(nx, ny);
 		}
 
 		private void ClearContent()
@@ -467,6 +537,11 @@ namespace FairyGUI
 			}
 
 			_content.Clear();
+			if (_content2 != null)
+			{
+				_content2.Dispose();
+				_content2 = null;
+			}
 			_contentItem = null;
 		}
 
@@ -499,6 +574,7 @@ namespace FairyGUI
 			if (str != null)
 				_fill = FieldTypes.ParseFillType(str);
 
+			_shrinkOnly = xml.GetAttributeBool("shrinkOnly");
 			_autoSize = xml.GetAttributeBool("autoSize", false);
 
 			str = xml.GetAttribute("errorSign");

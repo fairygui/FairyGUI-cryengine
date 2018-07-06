@@ -312,8 +312,8 @@ namespace FairyGUI
 			if (downEffect && _mode == ButtonMode.Common)
 			{
 				SetState(OVER);
-				Timers.inst.Add(0.1f, 1, __SetState, DOWN);
-				Timers.inst.Add(0.2f, 1, __SetState, UP);
+				Timers.inst.Add(0.1f, 1, (object param) => { SetState(DOWN); });
+				Timers.inst.Add(0.2f, 1, (object param) => { SetState(UP); });
 			}
 			__click();
 		}
