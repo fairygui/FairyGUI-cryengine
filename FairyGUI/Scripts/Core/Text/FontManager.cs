@@ -12,18 +12,43 @@ namespace FairyGUI
 		/// <summary>
 		/// 
 		/// </summary>
+		/// <param name="font"></param>
+		/// <param name="alias"></param>
+		static public void RegisterFont(BaseFont font, string alias)
+		{
+			if (!sFontFactory.ContainsKey(font.name))
+				sFontFactory.Add(font.name, font);
+			if (alias != null)
+			{
+				if (!sFontFactory.ContainsKey(alias))
+					sFontFactory.Add(alias, font);
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="font"></param>
+		static public void UnregisterFont(BaseFont font)
+		{
+			sFontFactory.Remove(font.name);
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
 		/// <param name="name"></param>
 		/// <returns></returns>
 		static public BaseFont GetFont(string name)
 		{
-			if (name.StartsWith("ui://"))
+			BaseFont ret;
+			if (name.StartsWith(UIPackage.URL_PREFIX))
 			{
-				BitmapFont font = (BitmapFont)UIPackage.GetItemAssetByURL(name);
-				if (font != null)
-					return font;
+				ret = UIPackage.GetItemAssetByURL(name) as BaseFont;
+				if (ret != null)
+					return ret;
 			}
 
-			BaseFont ret;
 			if (!sFontFactory.TryGetValue(name, out ret))
 			{
 				ret = new DynamicFont(name);
@@ -31,6 +56,14 @@ namespace FairyGUI
 			}
 
 			return ret;
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		static public void Clear()
+		{
+			sFontFactory.Clear();
 		}
 	}
 }

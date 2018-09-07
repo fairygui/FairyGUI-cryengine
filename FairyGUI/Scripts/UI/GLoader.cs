@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using CryEngine;
 using FairyGUI.Utils;
 
@@ -12,6 +11,7 @@ namespace FairyGUI
 	{
 		/// <summary>
 		/// Display an error sign if the loader fails to load the content.
+		/// UIConfig.loaderErrorSign muse be set.
 		/// </summary>
 		public bool showErrorSign;
 
@@ -29,8 +29,8 @@ namespace FairyGUI
 		float _contentSourceHeight;
 
 		MovieClip _content;
-		GComponent _content2;
 		GObject _errorSign;
+		GComponent _content2;
 
 		static GObjectPool errorSignPool;
 
@@ -187,12 +187,39 @@ namespace FairyGUI
 		/// </summary>
 		public int frame
 		{
-			get { return _content.currentFrame; }
+			get { return _content.frame; }
 			set
 			{
-				_content.currentFrame = value;
+				_content.frame = value;
 				UpdateGear(5);
 			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public float timeScale
+		{
+			get { return _content.timeScale; }
+			set { _content.timeScale = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool ignoreEngineTimeScale
+		{
+			get { return _content.ignoreEngineTimeScale; }
+			set { _content.ignoreEngineTimeScale = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="time"></param>
+		public void Advance(float time)
+		{
+			_content.Advance(time);
 		}
 
 		/// <summary>
@@ -211,6 +238,42 @@ namespace FairyGUI
 		/// <summary>
 		/// 
 		/// </summary>
+		public FillMethod fillMethod
+		{
+			get { return _content.fillMethod; }
+			set { _content.fillMethod = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public int fillOrigin
+		{
+			get { return _content.fillOrigin; }
+			set { _content.fillOrigin = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool fillClockwise
+		{
+			get { return _content.fillClockwise; }
+			set { _content.fillClockwise = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public float fillAmount
+		{
+			get { return _content.fillAmount; }
+			set { _content.fillAmount = value; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
 		public Image image
 		{
 			get { return _content; }
@@ -224,6 +287,9 @@ namespace FairyGUI
 			get { return _content; }
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
 		public GComponent component
 		{
 			get { return _content2; }
@@ -351,7 +417,6 @@ namespace FairyGUI
 
 		virtual protected void LoadExternal()
 		{
-
 		}
 
 		virtual protected void FreeExternal(NTexture texture)
@@ -375,7 +440,7 @@ namespace FairyGUI
 
 		private void SetErrorState()
 		{
-			if (!showErrorSign || !Application.isPlaying)
+			if (!showErrorSign)
 				return;
 
 			if (_errorSign == null)
@@ -553,44 +618,33 @@ namespace FairyGUI
 				UpdateLayout();
 		}
 
-		override public void Setup_BeforeAdd(XML xml)
+		override public void Setup_BeforeAdd(ByteBuffer buffer, int beginPos)
 		{
-			base.Setup_BeforeAdd(xml);
+			base.Setup_BeforeAdd(buffer, beginPos);
 
-			string str;
-			str = xml.GetAttribute("url");
-			if (str != null)
-				_url = str;
+			buffer.Seek(beginPos, 5);
 
-			str = xml.GetAttribute("align");
-			if (str != null)
-				_align = FieldTypes.ParseAlign(str);
+			_url = buffer.ReadS();
+			_align = (AlignType)buffer.ReadByte();
+			_verticalAlign = (VertAlignType)buffer.ReadByte();
+			_fill = (FillType)buffer.ReadByte();
+			_shrinkOnly = buffer.ReadBool();
+			_autoSize = buffer.ReadBool();
+			showErrorSign = buffer.ReadBool();
+			_content.playing = buffer.ReadBool();
+			_content.frame = buffer.ReadInt();
 
-			str = xml.GetAttribute("vAlign");
-			if (str != null)
-				_verticalAlign = FieldTypes.ParseVerticalAlign(str);
+			if (buffer.ReadBool())
+				_content.color = buffer.ReadColor();
+			_content.fillMethod = (FillMethod)buffer.ReadByte();
+			if (_content.fillMethod != FillMethod.None)
+			{
+				_content.fillOrigin = buffer.ReadByte();
+				_content.fillClockwise = buffer.ReadBool();
+				_content.fillAmount = buffer.ReadFloat();
+			}
 
-			str = xml.GetAttribute("fill");
-			if (str != null)
-				_fill = FieldTypes.ParseFillType(str);
-
-			_shrinkOnly = xml.GetAttributeBool("shrinkOnly");
-			_autoSize = xml.GetAttributeBool("autoSize", false);
-
-			str = xml.GetAttribute("errorSign");
-			if (str != null)
-				showErrorSign = str == "true";
-
-			str = xml.GetAttribute("frame");
-			if (str != null)
-				_content.currentFrame = int.Parse(str);
-			_content.playing = xml.GetAttributeBool("playing", true);
-
-			str = xml.GetAttribute("color");
-			if (str != null)
-				_content.color = ToolSet.ConvertFromHtmlColor(str);
-
-			if (_url != null)
+			if (!string.IsNullOrEmpty(_url))
 				LoadContent();
 		}
 	}

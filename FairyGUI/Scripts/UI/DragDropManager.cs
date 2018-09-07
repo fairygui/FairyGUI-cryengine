@@ -27,7 +27,7 @@ namespace FairyGUI
 
 		public DragDropManager()
 		{
-			_agent = (GLoader)UIObjectFactory.NewObject("loader");
+			_agent = (GLoader)UIObjectFactory.NewObject(ObjectType.Loader);
 			_agent.touchable = false;//important
 			_agent.draggable = true;
 			_agent.SetSize(100, 100);

@@ -1,5 +1,5 @@
-﻿using CryEngine;
-using System.Text;
+﻿using System.Text;
+using CryEngine;
 
 namespace FairyGUI.Utils
 {
@@ -230,6 +230,5 @@ namespace FairyGUI.Utils
 				&& c1.R == c2.R
 				&& c1.G == c2.G
 				&& c1.B == c2.B;
-		}
-	}
+		}	}
 }

@@ -175,45 +175,83 @@ namespace FairyGUI
 			this.SetSize(aWidth, aHeight);
 			this.shape.DrawRect(lineSize, lineColor, fillColor);
 		}
-
-		override public void Setup_BeforeAdd(XML xml)
+		/*
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="aWidth"></param>
+		/// <param name="aHeight"></param>
+		/// <param name="fillColor"></param>
+		/// <param name="corner"></param>
+		public void DrawRoundRect(float aWidth, float aHeight, Color fillColor, float[] corner)
 		{
-			string str;
-			string type = xml.GetAttribute("type");
-			if (type != null && type != "empty")
+			this.SetSize(aWidth, aHeight);
+			this.shape.DrawRoundRect(fillColor, corner);
+		}
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="aWidth"></param>
+		/// <param name="aHeight"></param>
+		/// <param name="fillColor"></param>
+		public void DrawEllipse(float aWidth, float aHeight, Color fillColor)
+		{
+			this.SetSize(aWidth, aHeight);
+			this.shape.DrawEllipse(fillColor);
+		}
+		
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="points"></param>
+		/// <param name="fillColor"></param>
+		public void DrawPolygon(float aWidth, float aHeight, Vector2[] points, Color fillColor)
+		{
+			this.SetSize(aWidth, aHeight);
+			this.shape.DrawPolygon(points, fillColor);
+		}
+		*/
+		override public void Setup_BeforeAdd(ByteBuffer buffer, int beginPos)
+		{
+			buffer.Seek(beginPos, 5);
+
+			int type = buffer.ReadByte();
+			int lineSize = 0;
+			Color lineColor = new Color();
+			Color fillColor = new Color();
+			float[] cornerRadius = null;
+
+			if (type != 0)
 			{
 				_shape = new Shape();
 				_shape.gOwner = this;
 				displayObject = _shape;
-			}
 
-			base.Setup_BeforeAdd(xml);
+				lineSize = buffer.ReadInt();
+				lineColor = buffer.ReadColor();
+				fillColor = buffer.ReadColor();
+				cornerRadius = null;
+				if (buffer.ReadBool())
+				{
+					cornerRadius = new float[4];
+					for (int i = 0; i < 4; i++)
+						cornerRadius[i] = buffer.ReadFloat();
+				}
+			}
+			base.Setup_BeforeAdd(buffer, beginPos);
 
 			if (_shape != null)
 			{
-				int lineSize;
-				str = xml.GetAttribute("lineSize");
-				if (str != null)
-					lineSize = int.Parse(str);
-				else
-					lineSize = 1;
-
-				Color lineColor;
-				str = xml.GetAttribute("lineColor");
-				if (str != null)
-					lineColor = ToolSet.ConvertFromHtmlColor(str);
-				else
-					lineColor = Color.Black;
-
-				Color fillColor;
-				str = xml.GetAttribute("fillColor");
-				if (str != null)
-					fillColor = ToolSet.ConvertFromHtmlColor(str);
-				else
-					fillColor = Color.White;
-
-				if (type == "rect")
-					DrawRect(this.width, this.height, lineSize, lineColor, fillColor);
+				if (type == 1)
+				{
+					/*if (cornerRadius != null)
+						DrawRoundRect(this.width, this.height, fillColor, cornerRadius);
+					else*/
+						DrawRect(this.width, this.height, lineSize, lineColor, fillColor);
+				}
+				//else
+					//DrawEllipse(this.width, this.height, fillColor);
 			}
 		}
 	}

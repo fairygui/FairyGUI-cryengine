@@ -85,7 +85,9 @@ namespace FairyGUI
 						}
 					}
 					else
+					{
 						_frame = null;
+					}
 				}
 			}
 			get

@@ -1,13 +1,10 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Drawing;
 using CryEngine;
 using CryEngine.Resources;
 using FairyGUI.Utils;
-using System.Text;
-using File = CryEngine.FileSystem.File;
 
 namespace FairyGUI
 {
@@ -31,24 +28,14 @@ namespace FairyGUI
 		/// </summary>
 		public string assetPath { get; private set; }
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="result"></param>
-		public delegate void CreateObjectCallback(GObject result);
-
 		List<PackageItem> _items;
 		Dictionary<string, PackageItem> _itemsById;
 		Dictionary<string, PackageItem> _itemsByName;
-		Dictionary<string, string> _descPack;
-		Dictionary<string, PixelHitTestData> _hitTestDatas;
-		string _assetNamePrefix;
 		string _customId;
-		bool _loadingPackage;
 
 		class AtlasSprite
 		{
-			public string atlas;
+			public PackageItem atlas;
 			public Rect rect = new Rect();
 			public bool rotated;
 		}
@@ -57,16 +44,17 @@ namespace FairyGUI
 		static Dictionary<string, UIPackage> _packageInstById = new Dictionary<string, UIPackage>();
 		static Dictionary<string, UIPackage> _packageInstByName = new Dictionary<string, UIPackage>();
 		static List<UIPackage> _packageList = new List<UIPackage>();
-		static Dictionary<string, Dictionary<string, string>> _stringsSource;
 
 		internal static int _constructing;
-		internal static string URL_PREFIX = "ui://";
+
+		public const string URL_PREFIX = "ui://";
 
 		public UIPackage()
 		{
 			_items = new List<PackageItem>();
+			_itemsById = new Dictionary<string, PackageItem>();
+			_itemsByName = new Dictionary<string, PackageItem>();
 			_sprites = new Dictionary<string, AtlasSprite>();
-			_hitTestDatas = new Dictionary<string, PixelHitTestData>();
 		}
 
 		/// <summary>
@@ -98,35 +86,30 @@ namespace FairyGUI
 		}
 
 		/// <summary>
-		/// 使用自定义的加载方式载入一个包。
+		/// Add a UI package from a path relative to Unity Resources path.
 		/// </summary>
-		/// <param name="assetPath">包资源路径。</param>
-		/// <param name="loadFunc">载入函数</param>
-		/// <returns></returns>
+		/// <param name="assetPath">Path relative to resources path.</param>
+		/// <returns>UIPackage</returns>
 		public static UIPackage AddPackage(string assetPath)
 		{
 			if (_packageInstById.ContainsKey(assetPath))
 				return _packageInstById[assetPath];
 
-			byte[] asset = File.ReadAllBytes(Engine.DataDirectory + "/" + assetPath + ".bytes");
-			if (asset == null)
-			{
-				if (Application.isPlaying)
-					throw new Exception("FairyGUI: Cannot load ui package in '" + assetPath + "'");
-				else
-					Log.Warning("FairyGUI: Cannot load ui package in '" + assetPath + "'");
-			}
+			byte[] bytes = File.ReadAllBytes(Engine.DataDirectory + assetPath + ".fui");
+			if (bytes == null)
+				throw new Exception("FairyGUI: Cannot load ui package in '" + assetPath + "'");
+
+			ByteBuffer buffer = new ByteBuffer(bytes);
 
 			UIPackage pkg = new UIPackage();
-			pkg.Create(asset, assetPath);
-			if (_packageInstById.ContainsKey(pkg.id))
-				Log.Warning("FairyGUI: Package id conflicts, '" + pkg.name + "' and '" + _packageInstById[pkg.id].name + "'");
+			pkg.assetPath = assetPath;
+			if (!pkg.LoadPackage(buffer, assetPath, Engine.DataDirectory + assetPath))
+				return null;
+
 			_packageInstById[pkg.id] = pkg;
 			_packageInstByName[pkg.name] = pkg;
 			_packageInstById[assetPath] = pkg;
 			_packageList.Add(pkg);
-			pkg.assetPath = assetPath;
-
 			return pkg;
 		}
 
@@ -134,17 +117,8 @@ namespace FairyGUI
 		/// Remove a package. All resources in this package will be disposed.
 		/// </summary>
 		/// <param name="packageIdOrName"></param>
-		public static void RemovePackage(string packageIdOrName)
-		{
-			RemovePackage(packageIdOrName, false);
-		}
-
-		/// <summary>
-		/// Remove a package. All resources in this package will be disposed.
-		/// </summary>
-		/// <param name="packageIdOrName"></param>
 		/// <param name="allowDestroyingAssets"></param>
-		public static void RemovePackage(string packageIdOrName, bool allowDestroyingAssets)
+		public static void RemovePackage(string packageIdOrName)
 		{
 			UIPackage pkg = null;
 			if (!_packageInstById.TryGetValue(packageIdOrName, out pkg))
@@ -166,15 +140,6 @@ namespace FairyGUI
 		/// 
 		/// </summary>
 		public static void RemoveAllPackages()
-		{
-			RemoveAllPackages(false);
-		}
-
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="allowDestroyAssets"></param>
-		public static void RemoveAllPackages(bool allowDestroyAssets)
 		{
 			if (_packageInstById.Count > 0)
 			{
@@ -257,24 +222,6 @@ namespace FairyGUI
 				return pi.owner.CreateObject(pi, userClass);
 			else
 				return null;
-		}
-
-		public static void CreateObjectAsync(string pkgName, string resName, CreateObjectCallback callback)
-		{
-			UIPackage pkg = GetByName(pkgName);
-			if (pkg != null)
-				pkg.CreateObjectAsync(resName, callback);
-			else
-				Log.Error("FairyGUI: package not found - " + pkgName);
-		}
-
-		public static void CreateObjectFromURL(string url, CreateObjectCallback callback)
-		{
-			PackageItem pi = GetItemByURL(url);
-			if (pi != null)
-				pi.owner.CreateObjectAsync(pi, callback);
-			else
-				Log.Error("FairyGUI: resource not found - " + url);
 		}
 
 		/// <summary>
@@ -394,27 +341,7 @@ namespace FairyGUI
 		/// <param name="source"></param>
 		public static void SetStringsSource(XML source)
 		{
-			_stringsSource = new Dictionary<string, Dictionary<string, string>>();
-			XMLList.Enumerator et = source.GetEnumerator("string");
-			while (et.MoveNext())
-			{
-				XML cxml = et.Current;
-				string key = cxml.GetAttribute("name");
-				string text = cxml.text;
-				int i = key.IndexOf("-");
-				if (i == -1)
-					continue;
-
-				string key2 = key.Substring(0, i);
-				string key3 = key.Substring(i + 1);
-				Dictionary<string, string> col;
-				if (!_stringsSource.TryGetValue(key2, out col))
-				{
-					col = new Dictionary<string, string>();
-					_stringsSource[key2] = col;
-				}
-				col[key3] = text;
-			}
+			TranslationHelper.LoadFromXML(source);
 		}
 
 		/// <summary>
@@ -433,216 +360,171 @@ namespace FairyGUI
 			}
 		}
 
-		public PixelHitTestData GetPixelHitTestData(string itemId)
+
+		bool LoadPackage(ByteBuffer buffer, string packageSource, string assetNamePrefix)
 		{
-			PixelHitTestData ret;
-			if (_hitTestDatas.TryGetValue(itemId, out ret))
-				return ret;
-			else
-				return null;
-		}
+			if (buffer.ReadUint() != 0x46475549)
+				throw new Exception("FairyGUI: old package format found in '" + packageSource + "'");
 
-		void Create(byte[] desc, string assetNamePrefix)
-		{
-			_descPack = new Dictionary<string, string>();
-
-			if (!Application.isPlaying)
-				UIObjectFactory.Clear();
-
-			DecodeDesc(desc);
-
-			if (!string.IsNullOrEmpty(assetNamePrefix))
-				_assetNamePrefix = Engine.DataDirectory + assetNamePrefix + "@";
-			else
-				_assetNamePrefix = Engine.DataDirectory;
-
-			LoadPackage();
-		}
-
-		void DecodeDesc(byte[] descBytes)
-		{
-			if (descBytes.Length < 4
-				|| descBytes[0] != 0x50 || descBytes[1] != 0x4b || descBytes[2] != 0x03 || descBytes[3] != 0x04)
+			buffer.version = buffer.ReadInt();
+			buffer.ReadBool(); //compressed
+			id = buffer.ReadString();
+			name = buffer.ReadString();
+			if (_packageInstById.ContainsKey(id) && name != _packageInstById[id].name)
 			{
-				string source = Encoding.UTF8.GetString(descBytes);
-				int curr = 0;
-				string fn;
-				int size;
-				while (true)
-				{
-					int pos = source.IndexOf("|", curr);
-					if (pos == -1)
-						break;
-					fn = source.Substring(curr, pos - curr);
-					curr = pos + 1;
-					pos = source.IndexOf("|", curr);
-					size = int.Parse(source.Substring(curr, pos - curr));
-					curr = pos + 1;
-					_descPack[fn] = source.Substring(curr, size);
-					curr += size;
-				}
+				Log.Warning("FairyGUI: Package id conflicts, '" + name + "' and '" + _packageInstById[id].name + "'");
+				return false;
 			}
-			else
-			{
-				ZipReader zip = new ZipReader(descBytes);
-				ZipReader.ZipEntry entry = new ZipReader.ZipEntry();
-				while (zip.GetNextEntry(entry))
-				{
-					if (entry.isDirectory)
-						continue;
+			buffer.Skip(20);
+			int indexTablePos = buffer.position;
+			int cnt;
 
-					_descPack[entry.name] = Encoding.UTF8.GetString(zip.GetEntryData(entry));
-				}
-			}
-		}
+			buffer.Seek(indexTablePos, 4);
 
-		void LoadPackage()
-		{
-			string[] arr = null;
-			string str;
+			cnt = buffer.ReadInt();
+			string[] stringTable = new string[cnt];
+			for (int i = 0; i < cnt; i++)
+				stringTable[i] = buffer.ReadString();
+			buffer.stringTable = stringTable;
 
-			str = LoadString("sprites.bytes");
-			if (str == null)
-			{
-				Log.Error("FairyGUI: cannot load package from '" + _assetNamePrefix + "'");
-				return;
-			}
+			buffer.Seek(indexTablePos, 1);
 
-			_loadingPackage = true;
-
-			arr = str.Split('\n');
-			int cnt = arr.Length;
-			for (int i = 1; i < cnt; i++)
-			{
-				str = arr[i];
-				if (str.Length == 0)
-					continue;
-
-				string[] arr2 = str.Split(' ');
-				AtlasSprite sprite = new AtlasSprite();
-				string itemId = arr2[0];
-				int binIndex = int.Parse(arr2[1]);
-				if (binIndex >= 0)
-					sprite.atlas = "atlas" + binIndex;
-				else
-				{
-					int pos = itemId.IndexOf("_");
-					if (pos == -1)
-						sprite.atlas = "atlas_" + itemId;
-					else
-						sprite.atlas = "atlas_" + itemId.Substring(0, pos);
-				}
-				sprite.rect.x = int.Parse(arr2[2]);
-				sprite.rect.y = int.Parse(arr2[3]);
-				sprite.rect.Width = int.Parse(arr2[4]);
-				sprite.rect.Height = int.Parse(arr2[5]);
-				sprite.rotated = arr2[6] == "1";
-				_sprites[itemId] = sprite;
-			}
-
-			if (File.Exists(_assetNamePrefix + "hittest.bytes"))
-			{
-				byte[] hittestData = File.ReadAllBytes(_assetNamePrefix + "hittest.bytes");
-				ByteBuffer ba = new ByteBuffer(hittestData);
-				while (ba.bytesAvailable)
-				{
-					PixelHitTestData pht = new PixelHitTestData();
-					_hitTestDatas[ba.ReadString()] = pht;
-					pht.Load(ba);
-				}
-			}
-
-			if (!_descPack.TryGetValue("package.xml", out str))
-				throw new Exception("FairyGUI: invalid package '" + _assetNamePrefix + "', if the files is checked out from git, make sure to disable autocrlf option!");
-
-			XML xml = new XML(str);
-
-			id = xml.GetAttribute("id");
-			name = xml.GetAttribute("name");
-
-			XML rxml = xml.GetNode("resources");
-			if (rxml == null)
-				throw new Exception("FairyGUI: invalid package xml '" + _assetNamePrefix + "'");
-
-			XMLList resources = rxml.Elements();
-
-			_itemsById = new Dictionary<string, PackageItem>();
-			_itemsByName = new Dictionary<string, PackageItem>();
 			PackageItem pi;
 
-			foreach (XML cxml in resources)
+			if (assetNamePrefix == null)
+				assetNamePrefix = string.Empty;
+			else if (assetNamePrefix.Length > 0)
+				assetNamePrefix = assetNamePrefix + "_";
+
+			cnt = buffer.ReadShort();
+			for (int i = 0; i < cnt; i++)
 			{
+				int nextPos = buffer.ReadInt();
+				nextPos += buffer.position;
+
 				pi = new PackageItem();
 				pi.owner = this;
-				pi.type = FieldTypes.ParsePackageItemType(cxml.name);
-				pi.id = cxml.GetAttribute("id");
-				pi.name = cxml.GetAttribute("name");
-				pi.exported = cxml.GetAttributeBool("exported");
-				pi.file = cxml.GetAttribute("file");
-				str = cxml.GetAttribute("size");
-				if (str != null)
-				{
-					arr = str.Split(',');
-					pi.width = int.Parse(arr[0]);
-					pi.height = int.Parse(arr[1]);
-				}
+				pi.type = (PackageItemType)buffer.ReadByte();
+				pi.id = buffer.ReadS();
+				pi.name = buffer.ReadS();
+				buffer.ReadS(); //path
+				pi.file = buffer.ReadS();
+				pi.exported = buffer.ReadBool();
+				pi.width = buffer.ReadInt();
+				pi.height = buffer.ReadInt();
+
 				switch (pi.type)
 				{
 					case PackageItemType.Image:
 						{
-							string scale = cxml.GetAttribute("scale");
-							if (scale == "9grid")
+							pi.objectType = ObjectType.Image;
+							int scaleOption = buffer.ReadByte();
+							if (scaleOption == 1)
 							{
-								arr = cxml.GetAttributeArray("scale9grid");
-								if (arr != null)
-								{
-									Rect rect = new Rect();
-									rect.x = int.Parse(arr[0]);
-									rect.y = int.Parse(arr[1]);
-									rect.Width = int.Parse(arr[2]);
-									rect.Height = int.Parse(arr[3]);
-									pi.scale9Grid = rect;
+								Rect rect = new Rect();
+								rect.x = buffer.ReadInt();
+								rect.y = buffer.ReadInt();
+								rect.Width = buffer.ReadInt();
+								rect.Height = buffer.ReadInt();
+								pi.scale9Grid = rect;
 
-									pi.tileGridIndice = cxml.GetAttributeInt("gridTile");
-								}
+								pi.tileGridIndice = buffer.ReadInt();
 							}
-							else if (scale == "tile")
+							else if (scaleOption == 2)
 								pi.scaleByTile = true;
+
+							buffer.ReadBool(); //smoothing
+							break;
+						}
+
+					case PackageItemType.MovieClip:
+						{
+							buffer.ReadBool(); //smoothing
+							pi.objectType = ObjectType.MovieClip;
+							pi.rawData = buffer.ReadBuffer();
 							break;
 						}
 
 					case PackageItemType.Font:
 						{
-							pi.bitmapFont = new BitmapFont(pi);
+							pi.rawData = buffer.ReadBuffer();
 							break;
 						}
 
 					case PackageItemType.Component:
 						{
+							int extension = buffer.ReadByte();
+							if (extension > 0)
+								pi.objectType = (ObjectType)extension;
+							else
+								pi.objectType = ObjectType.Component;
+							pi.rawData = buffer.ReadBuffer();
+
 							UIObjectFactory.ResolvePackageItemExtension(pi);
+							break;
 						}
-						break;
+
+					case PackageItemType.Atlas:
+					case PackageItemType.Sound:
+					case PackageItemType.Misc:
+						{
+							pi.file = assetNamePrefix + pi.file;
+							break;
+						}
 				}
 				_items.Add(pi);
 				_itemsById[pi.id] = pi;
 				if (pi.name != null)
 					_itemsByName[pi.name] = pi;
+
+				buffer.position = nextPos;
 			}
 
-			bool preloadAll = Application.isPlaying;
-			if (preloadAll)
+			buffer.Seek(indexTablePos, 2);
+
+			cnt = buffer.ReadShort();
+			for (int i = 0; i < cnt; i++)
 			{
-				cnt = _items.Count;
-				for (int i = 0; i < cnt; i++)
-					GetItemAsset(_items[i]);
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
 
-				_descPack = null;
-				_sprites = null;
+				string itemId = buffer.ReadS();
+				pi = _itemsById[buffer.ReadS()];
+
+				AtlasSprite sprite = new AtlasSprite();
+				sprite.atlas = pi;
+				sprite.rect.x = buffer.ReadInt();
+				sprite.rect.y = buffer.ReadInt();
+				sprite.rect.Width = buffer.ReadInt();
+				sprite.rect.Height = buffer.ReadInt();
+				sprite.rotated = buffer.ReadBool();
+				_sprites[itemId] = sprite;
+
+				buffer.position = nextPos;
 			}
-			else
-				_items.Sort(ComparePackageItem);
 
-			_loadingPackage = false;
+			if (buffer.Seek(indexTablePos, 3))
+			{
+				cnt = buffer.ReadShort();
+				for (int i = 0; i < cnt; i++)
+				{
+					int nextPos = buffer.ReadInt();
+					nextPos += buffer.position;
+
+					if (_itemsById.TryGetValue(buffer.ReadS(), out pi))
+					{
+						if (pi.type == PackageItemType.Image)
+						{
+							pi.pixelHitTestData = new PixelHitTestData();
+							pi.pixelHitTestData.Load(buffer);
+						}
+					}
+
+					buffer.position = nextPos;
+				}
+			}
+
+			return true;
 		}
 
 		static int ComparePackageItem(PackageItem p1, PackageItem p2)
@@ -653,28 +535,37 @@ namespace FairyGUI
 				return 0;
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		public void LoadAllAssets()
+		{
+			int cnt = _items.Count;
+			for (int i = 0; i < cnt; i++)
+				GetItemAsset(_items[i]);
+		}
+
 		void Dispose()
 		{
 			int cnt = _items.Count;
 			for (int i = 0; i < cnt; i++)
 			{
 				PackageItem pi = _items[i];
-				if (pi.texture != null)
+				if (pi.type == PackageItemType.Atlas)
 				{
-					if (pi.texture.alphaTexture != null)
+					if (pi.texture != null)
 					{
-						pi.texture.alphaTexture.Dispose();
-						pi.texture.alphaTexture = null;
+						pi.texture.Unload();
+						pi.texture = null;
 					}
-
-					if (pi.texture != NTexture.Empty)
-						pi.texture.Dispose();
-					pi.texture = null;
 				}
-				else if (pi.audioClip != null)
+				else if (pi.type == PackageItemType.Sound)
 				{
-					pi.audioClip.Dispose();
-					pi.audioClip = null;
+					if (pi.audioClip != null)
+					{
+						pi.audioClip.Dispose();
+						pi.audioClip = null;
+					}
 				}
 			}
 			_items.Clear();
@@ -689,10 +580,7 @@ namespace FairyGUI
 		{
 			PackageItem pi;
 			if (!_itemsByName.TryGetValue(resName, out pi))
-			{
-				Log.Error("FairyGUI: resource not found - " + resName + " in " + this.name);
 				return null;
-			}
 
 			return CreateObject(pi, null);
 		}
@@ -707,24 +595,9 @@ namespace FairyGUI
 		{
 			PackageItem pi;
 			if (!_itemsByName.TryGetValue(resName, out pi))
-			{
-				Log.Error("FairyGUI: resource not found - " + resName + " in " + this.name);
 				return null;
-			}
 
 			return CreateObject(pi, userClass);
-		}
-
-		public void CreateObjectAsync(string resName, CreateObjectCallback callback)
-		{
-			PackageItem pi;
-			if (!_itemsByName.TryGetValue(resName, out pi))
-			{
-				Log.Error("FairyGUI: resource not found - " + resName + " in " + this.name);
-				return;
-			}
-
-			CreateObjectAsync(pi, callback);
 		}
 
 		GObject CreateObject(PackageItem item, System.Type userClass)
@@ -738,7 +611,7 @@ namespace FairyGUI
 			if (item.type == PackageItemType.Component)
 			{
 				if (userClass != null)
-					g = (GComponent)userClass.Assembly.CreateInstance(userClass.FullName);
+					g = (GComponent)Activator.CreateInstance(userClass);
 				else
 					g = UIObjectFactory.NewObject(item);
 			}
@@ -755,135 +628,6 @@ namespace FairyGUI
 			return g;
 		}
 
-		void CreateObjectAsync(PackageItem item, CreateObjectCallback callback)
-		{
-			//Timers.inst.StartCoroutine(_CreateObjectAsync(item, callback));
-		}
-
-		IEnumerator _CreateObjectAsync(PackageItem item, CreateObjectCallback callback)
-		{
-			Stats.LatestObjectCreation = 0;
-			Stats.LatestGraphicsCreation = 0;
-
-			float frameTime = UIConfig.frameTimeForAsyncUIConstruction;
-
-			List<DisplayListItem> itemList = new List<DisplayListItem>();
-			CollectComponentChildren(item, itemList);
-			itemList.Add(new DisplayListItem(item, null));
-
-			int cnt = itemList.Count;
-			List<GObject> objectPool = new List<GObject>(cnt);
-			GObject obj;
-			DisplayListItem di;
-			float t = Engine.Timer.GetCurrTime();
-			bool alreadyNextFrame = false;
-
-			for (int i = 0; i < cnt; i++)
-			{
-				di = itemList[i];
-				if (di.packageItem != null)
-				{
-					obj = UIObjectFactory.NewObject(di.packageItem);
-					obj.packageItem = di.packageItem;
-					objectPool.Add(obj);
-
-					_constructing++;
-					if (di.packageItem.type == PackageItemType.Component)
-					{
-						int poolStart = objectPool.Count - di.packageItem.displayList.Length - 1;
-
-						((GComponent)obj).ConstructFromResource(objectPool, poolStart);
-
-						objectPool.RemoveRange(poolStart, di.packageItem.displayList.Length);
-					}
-					else
-					{
-						GetItemAsset(di.packageItem);
-						obj.ConstructFromResource();
-					}
-					_constructing--;
-				}
-				else
-				{
-					obj = UIObjectFactory.NewObject(di.type);
-					objectPool.Add(obj);
-
-					if (di.type == "list" && di.listItemCount > 0)
-					{
-						int poolStart = objectPool.Count - di.listItemCount - 1;
-						for (int k = 0; k < di.listItemCount; k++) //把他们都放到pool里，这样GList在创建时就不需要创建对象了
-							((GList)obj).itemPool.ReturnObject(objectPool[k + poolStart]);
-						objectPool.RemoveRange(poolStart, di.listItemCount);
-					}
-				}
-
-				if ((i % 5 == 0) && Engine.Timer.GetCurrTime() - t >= frameTime)
-				{
-					yield return null;
-					t = Engine.Timer.GetCurrTime();
-					alreadyNextFrame = true;
-				}
-			}
-
-			if (!alreadyNextFrame) //强制至至少下一帧才调用callback，避免调用者逻辑出错
-				yield return null;
-
-			callback(objectPool[0]);
-		}
-
-		/// <summary>
-		/// 收集创建目标对象所需的所有类型信息
-		/// </summary>
-		/// <param name="item"></param>
-		/// <param name="list"></param>
-		void CollectComponentChildren(PackageItem item, List<DisplayListItem> list)
-		{
-			if (!item.decoded)
-				LoadComponent(item);
-			if (item.displayList == null)
-			{
-				LoadComponentChildren(item);
-				TranslateComponent(item);
-			}
-
-			int cnt = item.displayList.Length;
-			for (int i = 0; i < cnt; i++)
-			{
-				DisplayListItem di = item.displayList[i];
-				if (di.packageItem != null && di.packageItem.type == PackageItemType.Component)
-					CollectComponentChildren(di.packageItem, list);
-				else if (di.type == "list") //也要收集列表的item
-				{
-					XMLList.Enumerator et = di.desc.GetEnumerator("item");
-					string defaultItem = null;
-					di.listItemCount = 0;
-					while (et.MoveNext())
-					{
-						XML ix = et.Current;
-						string url = ix.GetAttribute("url");
-						if (string.IsNullOrEmpty(url))
-						{
-							if (defaultItem == null)
-								defaultItem = di.desc.GetAttribute("defaultItem");
-							url = defaultItem;
-							if (string.IsNullOrEmpty(url))
-								continue;
-						}
-
-						PackageItem pi = UIPackage.GetItemByURL(url);
-						if (pi != null)
-						{
-							if (pi.type == PackageItemType.Component)
-								CollectComponentChildren(pi, list);
-
-							list.Add(new DisplayListItem(pi, null));
-							di.listItemCount++;
-						}
-					}
-				}
-				list.Add(di);
-			}
-		}
 
 		/// <summary>
 		/// 
@@ -894,10 +638,7 @@ namespace FairyGUI
 		{
 			PackageItem pi;
 			if (!_itemsByName.TryGetValue(resName, out pi))
-			{
-				Log.Error("FairyGUI: Resource not found - " + resName + " in " + this.name);
 				return null;
-			}
 
 			return GetItemAsset(pi);
 		}
@@ -930,495 +671,254 @@ namespace FairyGUI
 			switch (item.type)
 			{
 				case PackageItemType.Image:
-					if (!item.decoded)
-					{
-						item.decoded = true;
-						AtlasSprite sprite;
-						if (_sprites.TryGetValue(item.id, out sprite))
-							item.texture = CreateSpriteTexture(sprite);
-						else
-							item.texture = NTexture.Empty;
-					}
+					if (item.texture == null)
+						LoadImage(item);
 					return item.texture;
 
 				case PackageItemType.Atlas:
-					if (!item.decoded)
-					{
-						item.decoded = true;
+					if (item.texture == null)
 						LoadAtlas(item);
-
-					}
 					return item.texture;
 
 				case PackageItemType.Sound:
-					if (!item.decoded)
-					{
-						item.decoded = true;
+					if (item.audioClip == null)
 						LoadSound(item);
-					}
 					return item.audioClip;
 
 				case PackageItemType.Font:
-					if (!item.decoded)
-					{
-						item.decoded = true;
+					if (item.bitmapFont == null)
 						LoadFont(item);
-					}
+
 					return item.bitmapFont;
 
 				case PackageItemType.MovieClip:
-					if (!item.decoded)
-					{
-						item.decoded = true;
+					if (item.frames == null)
 						LoadMovieClip(item);
-					}
+
 					return item.frames;
 
 				case PackageItemType.Component:
-					if (!item.decoded)
-					{
-						item.decoded = true;
-						LoadComponent(item);
-					}
-					if (!_loadingPackage && item.displayList == null)
-					{
-						LoadComponentChildren(item);
-						TranslateComponent(item);
-					}
-					return item.componentData;
+					return item.rawData;
+
+				case PackageItemType.Misc:
+					return LoadBinary(item);
 
 				default:
-					if (!item.decoded)
-					{
-						item.decoded = true;
-						item.binary = File.ReadAllBytes(_assetNamePrefix + item.file);
-					}
-					return item.binary;
+					return null;
 			}
 		}
 
 		void LoadAtlas(PackageItem item)
 		{
-			string fileName = string.IsNullOrEmpty(item.file) ? (item.id + ".png") : item.file;
-			string filePath = _assetNamePrefix + fileName;
-
 			try
 			{
-				Bitmap bm = new Bitmap(filePath);
+				Bitmap bm = new Bitmap(item.file);
 				Texture tex = new Texture(item.width, item.height, bm.GetPixels());
 				bm.Dispose();
-				item.texture = new NTexture(tex, (float)tex.Width / item.width, (float)tex.Height / item.height);
+				item.texture = new NTexture(tex, null, (float)tex.Width / item.width, (float)tex.Height / item.height);
 			}
 			catch (Exception)
 			{
-				Log.Warning("FairyGUI: texture '" + fileName + "' not found in " + this.name);
+				Log.Warning("FairyGUI: texture '" + item.file + "' not found in " + this.name);
 				item.texture = NTexture.Empty;
 			}
 		}
 
+		void LoadImage(PackageItem item)
+		{
+			AtlasSprite sprite;
+			if (_sprites.TryGetValue(item.id, out sprite))
+				item.texture = new NTexture((NTexture)GetItemAsset(sprite.atlas), sprite.rect, sprite.rotated);
+			else
+				item.texture = NTexture.Empty;
+		}
+
 		void LoadSound(PackageItem item)
 		{
-			item.audioClip = new AudioFile(_assetNamePrefix + Path.GetFileNameWithoutExtension(item.file));
+			string ext = Path.GetExtension(item.file);
+			string fileName = item.file.Substring(0, item.file.Length - ext.Length);
+
+			item.audioClip = new AudioFile(fileName);
 		}
 
-		void LoadComponent(PackageItem item)
+		byte[] LoadBinary(PackageItem item)
 		{
-			string str = _descPack[item.id + ".xml"];
-			item.componentData = new XML(str);
-		}
-
-		void LoadComponentChildren(PackageItem item)
-		{
-			XML listNode = item.componentData.GetNode("displayList");
-			if (listNode != null)
-			{
-				XMLList col = listNode.Elements();
-				int dcnt = col.Count;
-				item.displayList = new DisplayListItem[dcnt];
-				DisplayListItem di;
-				for (int i = 0; i < dcnt; i++)
-				{
-					XML cxml = col[i];
-
-					string src = cxml.GetAttribute("src");
-					if (src != null)
-					{
-						string pkgId = cxml.GetAttribute("pkg");
-						UIPackage pkg;
-						if (pkgId != null && pkgId != item.owner.id)
-							pkg = UIPackage.GetById(pkgId);
-						else
-							pkg = item.owner;
-
-						PackageItem pi = pkg != null ? pkg.GetItem(src) : null;
-						if (pi != null)
-							di = new DisplayListItem(pi, null);
-						else
-							di = new DisplayListItem(null, cxml.name);
-					}
-					else
-					{
-						if (cxml.name == "text" && cxml.GetAttributeBool("input", false))
-							di = new DisplayListItem(null, "inputtext");
-						else
-							di = new DisplayListItem(null, cxml.name);
-					}
-
-					di.desc = cxml;
-					item.displayList[i] = di;
-				}
-			}
-			else
-				item.displayList = new DisplayListItem[0];
-		}
-
-		void TranslateComponent(PackageItem item)
-		{
-			if (_stringsSource == null)
-				return;
-
-			Dictionary<string, string> strings;
-			if (!_stringsSource.TryGetValue(this.id + item.id, out strings))
-				return;
-
-			string ename, elementId, value;
-			XML cxml, dxml;
-			int dcnt = item.displayList.Length;
-			for (int i = 0; i < dcnt; i++)
-			{
-				cxml = item.displayList[i].desc;
-				ename = cxml.name;
-				elementId = cxml.GetAttribute("id");
-				if (cxml.HasAttribute("tooltips"))
-				{
-					if (strings.TryGetValue(elementId + "-tips", out value))
-						cxml.SetAttribute("tooltips", value);
-				}
-
-				dxml = cxml.GetNode("gearText");
-				if (dxml != null)
-				{
-					if (strings.TryGetValue(elementId + "-texts", out value))
-						dxml.SetAttribute("values", value);
-
-					if (strings.TryGetValue(elementId + "-texts_def", out value))
-						dxml.SetAttribute("default", value);
-				}
-
-				if (ename == "text" || ename == "richtext")
-				{
-					if (strings.TryGetValue(elementId, out value))
-						cxml.SetAttribute("text", value);
-					if (strings.TryGetValue(elementId + "-prompt", out value))
-						cxml.SetAttribute("prompt", value);
-				}
-				else if (ename == "list")
-				{
-					XMLList.Enumerator et = cxml.GetEnumerator("item");
-					int j = 0;
-					while (et.MoveNext())
-					{
-						if (strings.TryGetValue(elementId + "-" + j, out value))
-							et.Current.SetAttribute("title", value);
-						j++;
-					}
-				}
-				else if (ename == "component")
-				{
-					dxml = cxml.GetNode("Button");
-					if (dxml != null)
-					{
-						if (strings.TryGetValue(elementId, out value))
-							dxml.SetAttribute("title", value);
-						if (strings.TryGetValue(elementId + "-0", out value))
-							dxml.SetAttribute("selectedTitle", value);
-						continue;
-					}
-
-					dxml = cxml.GetNode("Label");
-					if (dxml != null)
-					{
-						if (strings.TryGetValue(elementId, out value))
-							dxml.SetAttribute("title", value);
-						if (strings.TryGetValue(elementId + "-prompt", out value))
-							dxml.SetAttribute("prompt", value);
-						continue;
-					}
-
-					dxml = cxml.GetNode("ComboBox");
-					if (dxml != null)
-					{
-						if (strings.TryGetValue(elementId, out value))
-							dxml.SetAttribute("title", value);
-
-						XMLList.Enumerator et = dxml.GetEnumerator("item");
-						int j = 0;
-						while (et.MoveNext())
-						{
-							if (strings.TryGetValue(elementId + "-" + j, out value))
-								et.Current.SetAttribute("title", value);
-							j++;
-						}
-
-						continue;
-					}
-				}
-			}
-		}
-
-		NTexture CreateSpriteTexture(AtlasSprite sprite)
-		{
-			PackageItem atlasItem;
-			if (_itemsById.TryGetValue(sprite.atlas, out atlasItem))
-				return new NTexture((NTexture)GetItemAsset(atlasItem), sprite.rect, sprite.rotated);
-			else
-			{
-				Log.Warning("FairyGUI: " + sprite.atlas + " not found in " + this.name);
-				return NTexture.Empty;
-			}
-		}
-
-		string LoadString(string fileName)
-		{
-			byte[] data = File.ReadAllBytes(_assetNamePrefix + fileName);
-			if (data != null)
-				return Encoding.UTF8.GetString(data);
-			else
-				return null;
+			return File.ReadAllBytes(item.file);
 		}
 
 		void LoadMovieClip(PackageItem item)
 		{
-			string str = _descPack[item.id + ".xml"];
-			XML xml = new XML(str);
-			string[] arr = null;
+			ByteBuffer buffer = item.rawData;
 
-			str = xml.GetAttribute("interval");
-			if (str != null)
-				item.interval = float.Parse(str) / 1000f;
-			item.swing = xml.GetAttributeBool("swing", false);
-			str = xml.GetAttribute("repeatDelay");
-			if (str != null)
-				item.repeatDelay = float.Parse(str) / 1000f;
-			int frameCount = xml.GetAttributeInt("frameCount");
+			buffer.Seek(0, 0);
+
+			item.interval = buffer.ReadInt() / 1000f;
+			item.swing = buffer.ReadBool();
+			item.repeatDelay = buffer.ReadInt() / 1000f;
+
+			buffer.Seek(0, 1);
+
+			int frameCount = buffer.ReadShort();
 			item.frames = new MovieClip.Frame[frameCount];
 
-			int i = 0;
 			string spriteId;
-			XML frameNode;
 			MovieClip.Frame frame;
 			AtlasSprite sprite;
 
-			XMLList.Enumerator et = xml.GetNode("frames").GetEnumerator();
-			while (et.MoveNext())
+			for (int i = 0; i < frameCount; i++)
 			{
-				frameNode = et.Current;
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
 				frame = new MovieClip.Frame();
-
-				arr = frameNode.GetAttributeArray("rect");
-				frame.rect = new Rect(int.Parse(arr[0]), int.Parse(arr[1]), int.Parse(arr[2]), int.Parse(arr[3]));
-				str = frameNode.GetAttribute("addDelay");
-				if (str != null)
-					frame.addDelay = float.Parse(str) / 1000f;
-
-				str = frameNode.GetAttribute("sprite");
-				if (str != null)
-					spriteId = item.id + "_" + str;
-				else if (frame.rect.Width != 0)
-					spriteId = item.id + "_" + i;
-				else
-					spriteId = null;
+				frame.rect.x = buffer.ReadInt();
+				frame.rect.y = buffer.ReadInt();
+				frame.rect.Width = buffer.ReadInt();
+				frame.rect.Height = buffer.ReadInt();
+				frame.addDelay = buffer.ReadInt() / 1000f;
+				spriteId = buffer.ReadS();
 
 				if (spriteId != null && _sprites.TryGetValue(spriteId, out sprite))
 				{
-					PackageItem atlasItem = _itemsById[sprite.atlas];
-					if (atlasItem != null)
+					if (item.texture == null)
+						item.texture = (NTexture)GetItemAsset(sprite.atlas);
+					frame.uvRect = new Rect(sprite.rect.x / item.texture.width * item.texture.uvRect.Width,
+						1 - (sprite.rect.y + sprite.rect.Height) * item.texture.uvRect.Height / item.texture.height,
+						sprite.rect.Width * item.texture.uvRect.Width / item.texture.width,
+						sprite.rect.Height * item.texture.uvRect.Height / item.texture.height);
+					frame.rotated = sprite.rotated;
+					if (frame.rotated)
 					{
-						if (item.texture == null)
-							item.texture = (NTexture)GetItemAsset(atlasItem);
-						frame.uvRect = new Rect(sprite.rect.x / item.texture.width * item.texture.uvRect.Width,
-							1 - (sprite.rect.y + sprite.rect.Height) * item.texture.uvRect.Height / item.texture.height,
-							sprite.rect.Width * item.texture.uvRect.Width / item.texture.width,
-							sprite.rect.Height * item.texture.uvRect.Height / item.texture.height);
-						frame.rotated = sprite.rotated;
-						if (frame.rotated)
-						{
-							float tmp = frame.uvRect.Width;
-							frame.uvRect.Width = frame.uvRect.Height;
-							frame.uvRect.Height = tmp;
-						}
+						float tmp = frame.uvRect.Width;
+						frame.uvRect.Width = frame.uvRect.Height;
+						frame.uvRect.Height = tmp;
 					}
 				}
 				item.frames[i] = frame;
-				i++;
+
+				buffer.position = nextPos;
 			}
 		}
 
 		void LoadFont(PackageItem item)
 		{
-			BitmapFont font = item.bitmapFont;
+			BitmapFont font = new BitmapFont(item);
+			item.bitmapFont = font;
+			ByteBuffer buffer = item.rawData;
 
-			string str = _descPack[item.id + ".fnt"];
-			string[] arr = str.Split('\n');
-			int cnt = arr.Length;
-			Dictionary<string, string> kv = new Dictionary<string, string>();
-			NTexture mainTexture = null;
-			AtlasSprite mainSprite = null;
+			buffer.Seek(0, 0);
+
+			bool ttf = buffer.ReadBool();
+			font.colorEnabled = buffer.ReadBool();
+			font.scaleEnabled = buffer.ReadBool();
+			buffer.ReadBool();//hasChannel
+			int fontSize = buffer.ReadInt();
+			int xadvance = buffer.ReadInt();
+			int lineHeight = buffer.ReadInt();
+
 			float texScaleX = 1;
 			float texScaleY = 1;
-			bool ttf = false;
-			int size = 0;
-			int xadvance = 0;
-			bool scaleEnabled = false;
-			bool colorEnabled = false;
-			int lineHeight = 0;
-			BitmapFont.BMGlyph bg = null;
-
-			char[] splitter0 = new char[] { ' ' };
-			char[] splitter1 = new char[] { '=' };
-
-			for (int i = 0; i < cnt; i++)
+			NTexture mainTexture = null;
+			AtlasSprite mainSprite = null;
+			if (ttf && _sprites.TryGetValue(item.id, out mainSprite))
 			{
-				str = arr[i];
-				if (str.Length == 0)
-					continue;
-
-				str = str.Trim();
-
-				string[] arr2 = str.Split(splitter0, StringSplitOptions.RemoveEmptyEntries);
-				for (int j = 1; j < arr2.Length; j++)
-				{
-					string[] arr3 = arr2[j].Split(splitter1, StringSplitOptions.RemoveEmptyEntries);
-					if (arr3.Length >= 2)
-						kv[arr3[0]] = arr3[1];
-				}
-
-				str = arr2[0];
-				if (str == "char")
-				{
-					bg = new BitmapFont.BMGlyph();
-					int bx = 0, by = 0;
-					if (kv.TryGetValue("x", out str))
-						bx = int.Parse(str);
-					if (kv.TryGetValue("y", out str))
-						by = int.Parse(str);
-					if (kv.TryGetValue("xoffset", out str))
-						bg.offsetX = int.Parse(str);
-					if (kv.TryGetValue("yoffset", out str))
-						bg.offsetY = int.Parse(str);
-					if (kv.TryGetValue("width", out str))
-						bg.width = int.Parse(str);
-					if (kv.TryGetValue("height", out str))
-						bg.height = int.Parse(str);
-					if (kv.TryGetValue("xadvance", out str))
-						bg.advance = int.Parse(str);
-
-					if (!ttf)
-					{
-						if (kv.TryGetValue("img", out str))
-						{
-							PackageItem charImg;
-							if (_itemsById.TryGetValue(str, out charImg))
-							{
-								GetItemAsset(charImg);
-								Rect uvRect = charImg.texture.uvRect;
-								bg.uv[0] = new Vector2(uvRect.x, uvRect.y + uvRect.Height);
-								bg.uv[1] = new Vector2(uvRect.x + uvRect.Width, uvRect.y + uvRect.Height);
-								bg.uv[2] = new Vector2(uvRect.x + uvRect.Width, uvRect.y);
-								bg.uv[3] = new Vector2(uvRect.x, uvRect.y);
-								if (charImg.texture.rotated)
-									NGraphics.RotateUV(bg.uv, ref uvRect);
-								bg.width = charImg.texture.width;
-								bg.height = charImg.texture.height;
-								if (mainTexture == null)
-									mainTexture = charImg.texture.root;
-							}
-						}
-					}
-					else
-					{
-						if (mainSprite.rotated)
-						{
-							float texBaseY = 1 - (float)(mainSprite.rect.y + mainSprite.rect.Height - bx) * texScaleY;
-							bg.uv[0] = new Vector2((float)(by + bg.height + mainSprite.rect.x) * texScaleX,
-								texBaseY);
-							bg.uv[1] = new Vector2(bg.uv[0].x - (float)bg.height * texScaleX, texBaseY);
-							bg.uv[2] = new Vector2(bg.uv[1].x, texBaseY + (float)bg.width * texScaleY);
-							bg.uv[3] = new Vector2(bg.uv[0].x, texBaseY + (float)bg.width * texScaleY);
-						}
-						else
-						{
-							float texBaseY = 1 - (float)(by + bg.height + mainSprite.rect.y) * texScaleY;
-							bg.uv[0] = new Vector2((float)(bx + mainSprite.rect.x) * texScaleX,
-								texBaseY + (float)bg.height * texScaleY);
-							bg.uv[1] = new Vector2(bg.uv[0].x, texBaseY + (float)bg.height * texScaleY);
-							bg.uv[2] = new Vector2(bg.uv[0].x + (float)bg.width * texScaleX, texBaseY);
-							bg.uv[3] = new Vector2(bg.uv[2].x, texBaseY);
-						}
-					}
-
-					if (ttf)
-						bg.lineHeight = lineHeight;
-					else
-					{
-						if (bg.advance == 0)
-						{
-							if (xadvance == 0)
-								bg.advance = bg.offsetX + bg.width;
-							else
-								bg.advance = xadvance;
-						}
-
-						bg.lineHeight = bg.offsetY < 0 ? bg.height : (bg.offsetY + bg.height);
-						if (bg.lineHeight < size)
-							bg.lineHeight = size;
-					}
-
-					int ch = int.Parse(kv["id"]);
-					font.AddChar((char)ch, bg);
-				}
-				else if (str == "info")
-				{
-					if (kv.TryGetValue("face", out str))
-					{
-						ttf = true;
-						colorEnabled = true;
-
-						if (_sprites.TryGetValue(item.id, out mainSprite))
-						{
-							PackageItem atlasItem = _itemsById[mainSprite.atlas];
-							mainTexture = (NTexture)GetItemAsset(atlasItem);
-							texScaleX = mainTexture.root.uvRect.Width / mainTexture.width;
-							texScaleY = mainTexture.root.uvRect.Height / mainTexture.height;
-						}
-					}
-					if (kv.TryGetValue("size", out str))
-						size = int.Parse(str);
-					if (kv.TryGetValue("resizable", out str))
-						scaleEnabled = str == "true";
-					if (kv.TryGetValue("colored", out str))
-						colorEnabled = str == "true";
-
-					if (size == 0)
-						size = lineHeight;
-					else if (lineHeight == 0)
-						lineHeight = size;
-				}
-				else if (str == "common")
-				{
-					if (kv.TryGetValue("lineHeight", out str))
-						lineHeight = int.Parse(str);
-					if (kv.TryGetValue("xadvance", out str))
-						xadvance = int.Parse(str);
-				}
+				mainTexture = (NTexture)GetItemAsset(mainSprite.atlas);
+				texScaleX = mainTexture.root.uvRect.Width / mainTexture.width;
+				texScaleY = mainTexture.root.uvRect.Height / mainTexture.height;
 			}
 
-			if (size == 0 && bg != null)
-				size = bg.height;
+			buffer.Seek(0, 1);
 
-			font.size = size;
-			font.scaleEnabled = scaleEnabled;
-			font.colorEnabled = colorEnabled;
+			BitmapFont.BMGlyph bg;
+			int cnt = buffer.ReadInt();
+			for (int i = 0; i < cnt; i++)
+			{
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
+				bg = new BitmapFont.BMGlyph();
+				char ch = buffer.ReadChar();
+				font.AddChar(ch, bg);
+
+				string img = buffer.ReadS();
+				int bx = buffer.ReadInt();
+				int by = buffer.ReadInt();
+				bg.offsetX = buffer.ReadInt();
+				bg.offsetY = buffer.ReadInt();
+				bg.width = buffer.ReadInt();
+				bg.height = buffer.ReadInt();
+				bg.advance = buffer.ReadInt();
+				bg.channel = buffer.ReadByte();
+				if (bg.channel == 1)
+					bg.channel = 3;
+				else if (bg.channel == 2)
+					bg.channel = 2;
+				else if (bg.channel == 3)
+					bg.channel = 1;
+
+				if (ttf)
+				{
+					if (mainSprite.rotated)
+					{
+						float texBaseY = 1 - (float)(mainSprite.rect.y + mainSprite.rect.Height - bx) * texScaleY;
+						bg.uv[0] = new Vector2((float)(by + bg.height + mainSprite.rect.x) * texScaleX,
+							texBaseY);
+						bg.uv[1] = new Vector2(bg.uv[0].x - (float)bg.height * texScaleX, texBaseY);
+						bg.uv[2] = new Vector2(bg.uv[1].x, texBaseY + (float)bg.width * texScaleY);
+						bg.uv[3] = new Vector2(bg.uv[0].x, texBaseY + (float)bg.width * texScaleY);
+					}
+					else
+					{
+						float texBaseY = 1 - (float)(by + bg.height + mainSprite.rect.y) * texScaleY;
+						bg.uv[0] = new Vector2((float)(bx + mainSprite.rect.x) * texScaleX,
+							texBaseY + (float)bg.height * texScaleY);
+						bg.uv[1] = new Vector2(bg.uv[0].x, texBaseY + (float)bg.height * texScaleY);
+						bg.uv[2] = new Vector2(bg.uv[0].x + (float)bg.width * texScaleX, texBaseY);
+						bg.uv[3] = new Vector2(bg.uv[2].x, texBaseY);
+					}
+
+					bg.lineHeight = lineHeight;
+				}
+				else
+				{
+					PackageItem charImg;
+					if (_itemsById.TryGetValue(img, out charImg))
+					{
+						GetItemAsset(charImg);
+						Rect uvRect = charImg.texture.uvRect;
+						bg.uv[0] = new Vector2(uvRect.x, uvRect.y + uvRect.Height);
+						bg.uv[1] = new Vector2(uvRect.x + uvRect.Width, uvRect.y + uvRect.Height);
+						bg.uv[2] = new Vector2(uvRect.x + uvRect.Width, uvRect.y);
+						bg.uv[3] = new Vector2(uvRect.x, uvRect.y);
+						if (charImg.texture.rotated)
+							NGraphics.RotateUV(bg.uv, ref uvRect);
+						bg.width = charImg.texture.width;
+						bg.height = charImg.texture.height;
+
+						if (mainTexture == null)
+							mainTexture = charImg.texture.root;
+					}
+
+					if (fontSize == 0)
+						fontSize = bg.height;
+
+					if (bg.advance == 0)
+					{
+						if (xadvance == 0)
+							bg.advance = bg.offsetX + bg.width;
+						else
+							bg.advance = xadvance;
+					}
+
+					bg.lineHeight = bg.offsetY < 0 ? bg.height : (bg.offsetY + bg.height);
+					if (bg.lineHeight < font.size)
+						bg.lineHeight = font.size;
+				}
+
+				buffer.position = nextPos;
+			}
+
+			font.size = fontSize;
 			font.mainTexture = mainTexture;
 		}
 	}

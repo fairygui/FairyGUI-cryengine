@@ -21,10 +21,11 @@
     <DebugSymbols>true</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
-    <OutputPath>bin\</OutputPath>
+    <OutputPath>..\..\bin\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>pdbonly</DebugType>
@@ -35,15 +36,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="DOTween">
-      <HintPath>..\Libs\DOTween.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Drawing" />
-    <Reference Include="System.XML" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
-    <Reference Include="System.Xml.Linq" />
     <Reference Include="CryEngine.Common">
       <HintPath>..\..\..\Program\CRYENGINE Launcher\Crytek\CRYENGINE_5.4\bin\win_x64\CryEngine.Common.dll</HintPath>
       <Private>False</Private>
@@ -57,12 +53,12 @@
     <Compile Include="Scripts\Core\BlendMode.cs" />
     <Compile Include="Scripts\Core\Container.cs" />
     <Compile Include="Scripts\Core\DisplayObject.cs" />
+    <Compile Include="Scripts\Core\FillUtils.cs" />
     <Compile Include="Scripts\Core\HitTest\MeshColliderHitTest.cs" />
     <Compile Include="Scripts\Core\Image.cs" />
     <Compile Include="Scripts\Core\MovieClip.cs" />
     <Compile Include="Scripts\Core\NGraphics.cs" />
     <Compile Include="Scripts\Core\NTexture.cs" />
-    <Compile Include="Scripts\Core\PlayState.cs" />
     <Compile Include="Scripts\Core\Shape.cs" />
     <Compile Include="Scripts\Core\Stage.cs" />
     <Compile Include="Scripts\Core\Stats.cs" />
@@ -90,6 +86,13 @@
     <Compile Include="Scripts\Event\InputEvent.cs" />
     <Compile Include="Scripts\Filter\ColorFilter.cs" />
     <Compile Include="Scripts\Filter\IFilter.cs" />
+    <Compile Include="Scripts\Tween\EaseManager.cs" />
+    <Compile Include="Scripts\Tween\EaseType.cs" />
+    <Compile Include="Scripts\Tween\GTween.cs" />
+    <Compile Include="Scripts\Tween\GTweener.cs" />
+    <Compile Include="Scripts\Tween\TweenManager.cs" />
+    <Compile Include="Scripts\Tween\TweenPropType.cs" />
+    <Compile Include="Scripts\Tween\TweenValue.cs" />
     <Compile Include="Scripts\UI\Controller.cs" />
     <Compile Include="Scripts\UI\DragDropManager.cs" />
     <Compile Include="Scripts\UI\FieldTypes.cs" />
@@ -121,6 +124,7 @@
     <Compile Include="Scripts\UI\Relations.cs" />
     <Compile Include="Scripts\UI\ScrollPane.cs" />
     <Compile Include="Scripts\UI\Transition.cs" />
+    <Compile Include="Scripts\UI\TranslationHelper.cs" />
     <Compile Include="Scripts\UI\UIConfig.cs" />
     <Compile Include="Scripts\UI\UIContentScaler.cs" />
     <Compile Include="Scripts\UI\UIObjectFactory.cs" />

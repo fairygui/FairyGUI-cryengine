@@ -121,7 +121,7 @@ namespace FairyGUI
 				switch (_titleType)
 				{
 					case ProgressTitleType.Percent:
-						_titleObject.text = (int)Math.Round(percent * 100) + "%";
+						_titleObject.text =(int)Math.Round(percent * 100) + "%";
 						break;
 
 					case ProgressTitleType.ValueAndMax:
@@ -144,41 +144,58 @@ namespace FairyGUI
 			{
 				if (_barObjectH != null)
 				{
-					_barObjectH.width = (int)Math.Round(fullWidth * percent);
+					if ((_barObjectH is GImage) && ((GImage)_barObjectH).fillMethod != FillMethod.None)
+						((GImage)_barObjectH).fillAmount = percent;
+					else if ((_barObjectH is GLoader) && ((GLoader)_barObjectH).fillMethod != FillMethod.None)
+						((GLoader)_barObjectH).fillAmount = percent;
+					else
+						_barObjectH.width = (int)Math.Round(fullWidth * percent);
 				}
 				if (_barObjectV != null)
 				{
-					_barObjectV.height = (int)Math.Round(fullHeight * percent);
+					if ((_barObjectV is GImage) && ((GImage)_barObjectV).fillMethod != FillMethod.None)
+						((GImage)_barObjectV).fillAmount = percent;
+					else if ((_barObjectV is GLoader) && ((GLoader)_barObjectV).fillMethod != FillMethod.None)
+						((GLoader)_barObjectV).fillAmount = percent;
+					else
+						_barObjectV.height = (int)Math.Round(fullHeight * percent);
 				}
 			}
 			else
 			{
 				if (_barObjectH != null)
 				{
-					_barObjectH.width = (int)Math.Round(fullWidth * percent);
-					_barObjectH.x = _barStartX + (fullWidth - _barObjectH.width);
+					if ((_barObjectH is GImage) && ((GImage)_barObjectH).fillMethod != FillMethod.None)
+						((GImage)_barObjectH).fillAmount = 1 - percent;
+					else if ((_barObjectH is GLoader) && ((GLoader)_barObjectH).fillMethod != FillMethod.None)
+						((GLoader)_barObjectH).fillAmount = 1 - percent;
+					else
+					{
+						_barObjectH.width = (int)Math.Round(fullWidth * percent);
+						_barObjectH.x = _barStartX + (fullWidth - _barObjectH.width);
+					}
 				}
 				if (_barObjectV != null)
 				{
-					_barObjectV.height = (int)Math.Round(fullHeight * percent);
-					_barObjectV.y = _barStartY + (fullHeight - _barObjectV.height);
+					if ((_barObjectV is GImage) && ((GImage)_barObjectV).fillMethod != FillMethod.None)
+						((GImage)_barObjectV).fillAmount = 1 - percent;
+					else if ((_barObjectV is GLoader) && ((GLoader)_barObjectV).fillMethod != FillMethod.None)
+						((GLoader)_barObjectV).fillAmount = 1 - percent;
+					else
+					{
+						_barObjectV.height = (int)Math.Round(fullHeight * percent);
+						_barObjectV.y = _barStartY + (fullHeight - _barObjectV.height);
+					}
 				}
 			}
 		}
 
-		override public void ConstructFromXML(XML cxml)
+		override protected void ConstructExtension(ByteBuffer buffer)
 		{
-			base.ConstructFromXML(cxml);
+			buffer.Seek(0, 6);
 
-			XML xml = cxml.GetNode("Slider");
-
-			string str;
-			str = xml.GetAttribute("titleType");
-			if (str != null)
-				_titleType = FieldTypes.ParseProgressTitleType(str);
-			else
-				_titleType = ProgressTitleType.Percent;
-			_reverse = xml.GetAttributeBool("reverse");
+			_titleType = (ProgressTitleType)buffer.ReadByte();
+			_reverse = buffer.ReadBool();
 
 			_titleObject = GetChild("title") as GTextField;
 			_barObjectH = GetChild("bar");
@@ -208,16 +225,25 @@ namespace FairyGUI
 			onTouchBegin.Add(__barTouchBegin);
 		}
 
-		override public void Setup_AfterAdd(XML cxml)
+		override public void Setup_AfterAdd(ByteBuffer buffer, int beginPos)
 		{
-			base.Setup_AfterAdd(cxml);
+			base.Setup_AfterAdd(buffer, beginPos);
 
-			XML xml = cxml.GetNode("Slider");
-			if (xml != null)
+			if (!buffer.Seek(beginPos, 6))
 			{
-				_value = xml.GetAttributeInt("value");
-				_max = xml.GetAttributeInt("max");
+				Update();
+				return;
 			}
+
+			if ((ObjectType)buffer.ReadByte() != packageItem.objectType)
+			{
+				Update();
+				return;
+			}
+
+			_value = buffer.ReadInt();
+			_max = buffer.ReadInt();
+
 			Update();
 		}
 
@@ -282,7 +308,8 @@ namespace FairyGUI
 			if (newValue != _value)
 			{
 				_value = newValue;
-				onChanged.Call();
+				if (onChanged.Call())
+					return;
 			}
 			UpdateWidthPercent(percent);
 		}

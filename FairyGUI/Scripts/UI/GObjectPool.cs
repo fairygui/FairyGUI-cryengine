@@ -1,6 +1,4 @@
-﻿using CryEngine;
-using System.Collections.Generic;
-using FairyGUI.Utils;
+﻿using System.Collections.Generic;
 
 namespace FairyGUI
 {
@@ -22,6 +20,9 @@ namespace FairyGUI
 
 		Dictionary<string, Queue<GObject>> _pool;
 
+		/// <summary>
+		/// 需要设置一个manager，加入池里的对象都成为这个manager的孩子
+		/// </summary>
 		public GObjectPool()
 		{
 			_pool = new Dictionary<string, Queue<GObject>>();

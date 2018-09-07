@@ -85,8 +85,8 @@ namespace FairyGUI
 
 			base.Dispose(); //Dispose native tree first, avoid DisplayObject.RemoveFromParent call
 
-			int numChildren = _children.Count;
-			for (int i = numChildren - 1; i >= 0; --i)
+			cnt = _children.Count;
+			for (int i = cnt - 1; i >= 0; --i)
 			{
 				GObject obj = _children[i];
 				obj.InternalSetParent(null); //Avoid GObject.RemoveParent call
@@ -862,6 +862,19 @@ namespace FairyGUI
 		}
 
 		/// <summary>
+		/// 
+		/// </summary>
+		public string baseUserData
+		{
+			get
+			{
+				ByteBuffer buffer = packageItem.rawData;
+				buffer.Seek(0, 4);
+				return buffer.ReadS();
+			}
+		}
+
+		/// <summary>
 		/// Test if a child is in view.
 		/// </summary>
 		/// <param name="child">A child object</param>
@@ -893,10 +906,7 @@ namespace FairyGUI
 			return -1;
 		}
 
-		protected void SetupScroll(Margin scrollBarMargin,
-			ScrollType scroll, ScrollBarDisplayType scrollBarDisplay, int flags,
-			string vtScrollBarRes, string hzScrollBarRes,
-			string headerRes, string footerRes)
+		protected void SetupScroll(ByteBuffer buffer)
 		{
 			if (rootContainer == container)
 			{
@@ -904,7 +914,8 @@ namespace FairyGUI
 				rootContainer.AddChild(container);
 			}
 
-			scrollPane = new ScrollPane(this, scroll, scrollBarMargin, scrollBarDisplay, flags, vtScrollBarRes, hzScrollBarRes, headerRes, footerRes);
+			scrollPane = new ScrollPane(this);
+			scrollPane.Setup(buffer);
 		}
 
 		protected void SetupOverflow(OverflowType overflow)
@@ -1184,6 +1195,11 @@ namespace FairyGUI
 			}
 		}
 
+		/// <summary>
+		/// 每帧调用的一个回调。如果你要override，请记住以下两点：
+		/// 1、记得调用base.onUpdate;
+		/// 2、不要在方法里进行任何会更改显示列表的操作，例如AddChild、RemoveChild、visible等。
+		/// </summary>
 		internal void OnUpdate()
 		{
 			if (_boundsChanged)
@@ -1197,165 +1213,195 @@ namespace FairyGUI
 
 		internal void ConstructFromResource(List<GObject> objectPool, int poolIndex)
 		{
-			XML xml = packageItem.componentData;
+			if (!packageItem.translated)
+			{
+				packageItem.translated = true;
+				TranslationHelper.TranslateComponent(packageItem);
+			}
 
-			string str;
-			string[] arr;
+			ByteBuffer buffer = packageItem.rawData;
+			buffer.Seek(0, 0);
 
 			underConstruct = true;
 
-			arr = xml.GetAttributeArray("size");
-			sourceWidth = int.Parse(arr[0]);
-			sourceHeight = int.Parse(arr[1]);
+			sourceWidth = buffer.ReadInt();
+			sourceHeight = buffer.ReadInt();
 			initWidth = sourceWidth;
 			initHeight = sourceHeight;
 
 			SetSize(sourceWidth, sourceHeight);
 
-			arr = xml.GetAttributeArray("restrictSize");
-			if (arr != null)
+			if (buffer.ReadBool())
 			{
-				minWidth = int.Parse(arr[0]);
-				maxWidth = int.Parse(arr[1]);
-				minHeight = int.Parse(arr[2]);
-				maxHeight = int.Parse(arr[3]);
+				minWidth = buffer.ReadInt();
+				maxWidth = buffer.ReadInt();
+				minHeight = buffer.ReadInt();
+				maxHeight = buffer.ReadInt();
 			}
 
-			arr = xml.GetAttributeArray("pivot");
-			if (arr != null)
+			if (buffer.ReadBool())
 			{
-				float f1 = float.Parse(arr[0]);
-				float f2 = float.Parse(arr[1]);
-				this.SetPivot(f1, f2, xml.GetAttributeBool("anchor"));
+				float f1 = buffer.ReadFloat();
+				float f2 = buffer.ReadFloat();
+				SetPivot(f1, f2, buffer.ReadBool());
 			}
 
-			this.opaque = xml.GetAttributeBool("opaque", true);
-			arr = xml.GetAttributeArray("hitTest");
-			if (arr != null)
+			if (buffer.ReadBool())
 			{
-				PixelHitTestData hitTestData = packageItem.owner.GetPixelHitTestData(arr[0]);
-				if (hitTestData != null)
-					this.rootContainer.hitArea = new PixelHitTest(hitTestData, int.Parse(arr[1]), int.Parse(arr[2]));
+				_margin.top = buffer.ReadInt();
+				_margin.bottom = buffer.ReadInt();
+				_margin.left = buffer.ReadInt();
+				_margin.right = buffer.ReadInt();
 			}
 
-			OverflowType overflow;
-			str = xml.GetAttribute("overflow");
-			if (str != null)
-				overflow = FieldTypes.ParseOverflowType(str);
-			else
-				overflow = OverflowType.Visible;
-
-			str = xml.GetAttribute("margin");
-			if (str != null)
-				_margin.Parse(str);
-
+			OverflowType overflow = (OverflowType)buffer.ReadByte();
 			if (overflow == OverflowType.Scroll)
 			{
-				ScrollType scroll;
-				str = xml.GetAttribute("scroll");
-				if (str != null)
-					scroll = FieldTypes.ParseScrollType(str);
-				else
-					scroll = ScrollType.Vertical;
-
-				ScrollBarDisplayType scrollBarDisplay;
-				str = xml.GetAttribute("scrollBar");
-				if (str != null)
-					scrollBarDisplay = FieldTypes.ParseScrollBarDisplayType(str);
-				else
-					scrollBarDisplay = ScrollBarDisplayType.Default;
-
-				int scrollBarFlags = xml.GetAttributeInt("scrollBarFlags");
-
-				Margin scrollBarMargin = new Margin();
-				str = xml.GetAttribute("scrollBarMargin");
-				if (str != null)
-					scrollBarMargin.Parse(str);
-
-				string vtScrollBarRes = null;
-				string hzScrollBarRes = null;
-				arr = xml.GetAttributeArray("scrollBarRes");
-				if (arr != null)
-				{
-					vtScrollBarRes = arr[0];
-					hzScrollBarRes = arr[1];
-				}
-
-				string headerRes = null;
-				string footerRes = null;
-				arr = xml.GetAttributeArray("ptrRes");
-				if (arr != null)
-				{
-					headerRes = arr[0];
-					footerRes = arr[1];
-				}
-
-				SetupScroll(scrollBarMargin, scroll, scrollBarDisplay, scrollBarFlags, vtScrollBarRes, hzScrollBarRes, headerRes, footerRes);
+				int savedPos = buffer.position;
+				buffer.Seek(0, 7);
+				SetupScroll(buffer);
+				buffer.position = savedPos;
 			}
 			else
 				SetupOverflow(overflow);
 
+			if (buffer.ReadBool()) //clipSoftness
+				buffer.Skip(8);
+
 			_buildingDisplayList = true;
 
-			XMLList.Enumerator et = xml.GetEnumerator("controller");
-			Controller controller;
-			while (et.MoveNext())
+			buffer.Seek(0, 1);
+
+			int controllerCount = buffer.ReadShort();
+			for (int i = 0; i < controllerCount; i++)
 			{
-				controller = new Controller();
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
+				Controller controller = new Controller();
 				_controllers.Add(controller);
 				controller.parent = this;
-				controller.Setup(et.Current);
+				controller.Setup(buffer);
+
+				buffer.position = nextPos;
 			}
+
+			buffer.Seek(0, 2);
 
 			GObject child;
-
-			DisplayListItem[] displayList = packageItem.displayList;
-			int childCount = displayList.Length;
+			int childCount = buffer.ReadShort();
 			for (int i = 0; i < childCount; i++)
 			{
-				DisplayListItem di = displayList[i];
+				int dataLen = buffer.ReadShort();
+				int curPos = buffer.position;
+
 				if (objectPool != null)
 					child = objectPool[poolIndex + i];
-				else if (di.packageItem != null)
-				{
-					di.packageItem.Load();
-					child = UIObjectFactory.NewObject(di.packageItem);
-					child.packageItem = di.packageItem;
-					child.ConstructFromResource();
-				}
 				else
-					child = UIObjectFactory.NewObject(di.type);
+				{
+					buffer.Seek(curPos, 0);
+
+					ObjectType type = (ObjectType)buffer.ReadByte();
+					string src = buffer.ReadS();
+					string pkgId = buffer.ReadS();
+
+					PackageItem pi = null;
+					if (src != null)
+					{
+						UIPackage pkg;
+						if (pkgId != null)
+							pkg = UIPackage.GetById(pkgId);
+						else
+							pkg = packageItem.owner;
+
+						pi = pkg != null ? pkg.GetItem(src) : null;
+					}
+
+					if (pi != null)
+					{
+						child = UIObjectFactory.NewObject(pi);
+						child.packageItem = pi;
+						child.ConstructFromResource();
+					}
+					else
+						child = UIObjectFactory.NewObject(type);
+				}
 
 				child.underConstruct = true;
-				child.Setup_BeforeAdd(di.desc);
+				child.Setup_BeforeAdd(buffer, curPos);
 				child.InternalSetParent(this);
 				_children.Add(child);
+
+				buffer.position = curPos + dataLen;
 			}
 
-			this.relations.Setup(xml);
+			buffer.Seek(0, 3);
+			this.relations.Setup(buffer, true);
 
-			for (int i = 0; i < childCount; i++)
-				_children[i].relations.Setup(displayList[i].desc);
+			buffer.Seek(0, 2);
+			buffer.Skip(2);
 
 			for (int i = 0; i < childCount; i++)
 			{
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
+				buffer.Seek(buffer.position, 3);
+				_children[i].relations.Setup(buffer, false);
+
+				buffer.position = nextPos;
+			}
+
+			buffer.Seek(0, 2);
+			buffer.Skip(2);
+
+			for (int i = 0; i < childCount; i++)
+			{
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
 				child = _children[i];
-				child.Setup_AfterAdd(displayList[i].desc);
+				child.Setup_AfterAdd(buffer, buffer.position);
 				child.underConstruct = false;
+
+				buffer.position = nextPos;
 			}
 
-			str = xml.GetAttribute("mask");
-			if (str != null)
+			buffer.Seek(0, 4);
+
+			buffer.Skip(2); //customData
+			this.opaque = buffer.ReadBool();
+			int maskId = buffer.ReadShort();
+			if (maskId != -1)
 			{
-				this.mask = GetChildById(str).displayObject;
+				this.mask = GetChildAt(maskId).displayObject;
+				buffer.ReadBool(); //reversedMask
+			}
+			string hitTestId = buffer.ReadS();
+			if (hitTestId != null)
+			{
+				PackageItem pi = packageItem.owner.GetItem(hitTestId);
+				if (pi != null && pi.pixelHitTestData != null)
+				{
+					int i1 = buffer.ReadInt();
+					int i2 = buffer.ReadInt();
+					this.rootContainer.hitArea = new PixelHitTest(pi.pixelHitTestData, i1, i2);
+				}
 			}
 
-			et = xml.GetEnumerator("transition");
-			while (et.MoveNext())
+			buffer.Seek(0, 5);
+
+			int transitionCount = buffer.ReadShort();
+			for (int i = 0; i < transitionCount; i++)
 			{
+				int nextPos = buffer.ReadShort();
+				nextPos += buffer.position;
+
 				Transition trans = new Transition(this);
-				trans.Setup(et.Current);
+				trans.Setup(buffer);
 				_transitions.Add(trans);
+
+				buffer.position = nextPos;
 			}
 
 			if (_transitions.Count > 0)
@@ -1372,40 +1418,40 @@ namespace FairyGUI
 			BuildNativeDisplayList();
 			SetBoundsChangedFlag();
 
-			ConstructFromXML(xml);
+			if (packageItem.objectType != ObjectType.Component)
+				ConstructExtension(buffer);
+
+			OnConstruct();
+		}
+
+		virtual protected void ConstructExtension(ByteBuffer buffer)
+		{
 		}
 
 		/// <summary>
 		/// Method for extensions to override
 		/// </summary>
-		/// <param name="xml"></param>
-		virtual public void ConstructFromXML(XML xml)
+		virtual protected void OnConstruct()
 		{
 		}
 
-		public override void Setup_AfterAdd(XML xml)
+		public override void Setup_AfterAdd(ByteBuffer buffer, int beginPos)
 		{
-			base.Setup_AfterAdd(xml);
+			base.Setup_AfterAdd(buffer, beginPos);
 
-			string str;
-			string[] arr;
+			buffer.Seek(beginPos, 4);
 
-			if (scrollPane != null && scrollPane.pageMode)
+			int pageController = buffer.ReadShort();
+			if (pageController != -1 && scrollPane != null && scrollPane.pageMode)
+				scrollPane.pageController = parent.GetControllerAt(pageController);
+
+			int cnt = buffer.ReadShort();
+			for (int i = 0; i < cnt; i++)
 			{
-				str = xml.GetAttribute("pageController");
-				if (str != null)
-					scrollPane.pageController = parent.GetController(str);
-			}
-
-			arr = xml.GetAttributeArray("controller");
-			if (arr != null)
-			{
-				for (int i = 0; i < arr.Length; i += 2)
-				{
-					Controller cc = GetController(arr[i]);
-					if (cc != null)
-						cc.selectedPageId = arr[i + 1];
-				}
+				Controller cc = GetController(buffer.ReadS());
+				string pageId = buffer.ReadS();
+				if (cc != null)
+					cc.selectedPageId = pageId;
 			}
 		}
 
@@ -1413,11 +1459,7 @@ namespace FairyGUI
 		{
 			int cnt = _transitions.Count;
 			for (int i = 0; i < cnt; ++i)
-			{
-				Transition trans = _transitions[i];
-				if (trans.autoPlay)
-					trans.Play(trans.autoPlayRepeat, trans.autoPlayDelay, null);
-			}
+				_transitions[i].OnOwnerAddedToStage();
 		}
 
 		void __removedFromStage()

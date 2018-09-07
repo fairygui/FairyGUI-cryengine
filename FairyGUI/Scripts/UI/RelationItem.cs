@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using CryEngine;
+using FairyGUI.Utils;
 
 namespace FairyGUI
 {

@@ -1,5 +1,5 @@
-﻿using CryEngine;
-using System;
+﻿using System;
+using CryEngine;
 using System.Collections.Generic;
 
 namespace FairyGUI
@@ -315,7 +315,7 @@ namespace FairyGUI
 
 		/// <summary>
 		/// Show a popup object along with the specific target object.
-		/// 显示一个popup。将popup显示在指定对象的上边或者下边。
+		/// 显示一个popup。将popup显示在指定对象的上方或者下方。
 		/// popup的特点是点击popup对象外的区域，popup对象将自动消失。
 		/// </summary>
 		/// <param name="popup"></param>
@@ -400,6 +400,7 @@ namespace FairyGUI
 					xx += size.x / 2;
 				}
 			}
+
 			return new Vector2((int)Math.Round(xx), (int)Math.Round(yy));
 		}
 
@@ -650,5 +651,6 @@ namespace FairyGUI
 				}
 			}
 		}
+
 	}
 }

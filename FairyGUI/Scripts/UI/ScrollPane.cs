@@ -1,6 +1,6 @@
 ﻿using System;
 using CryEngine;
-using DG.Tweening;
+using FairyGUI.Utils;
 
 namespace FairyGUI
 {
@@ -104,24 +104,26 @@ namespace FairyGUI
 		const float TWEEN_TIME_DEFAULT = 0.3f; //惯性滚动的最小缓动时间
 		const float PULL_RATIO = 0.5f; //下拉过顶或者上拉过底时允许超过的距离占显示区域的比例
 
-		public ScrollPane(GComponent owner,
-									ScrollType scrollType,
-									Margin scrollBarMargin,
-									ScrollBarDisplayType scrollBarDisplay,
-									int flags,
-									string vtScrollBarRes,
-									string hzScrollBarRes,
-									string headerRes,
-									string footerRes)
+		public ScrollPane(GComponent owner)
 		{
 			onScroll = new EventListener(this, "onScroll");
 			onScrollEnd = new EventListener(this, "onScrollEnd");
 			onPullDownRelease = new EventListener(this, "onPullDownRelease");
 			onPullUpRelease = new EventListener(this, "onPullUpRelease");
 
+			_scrollStep = UIConfig.defaultScrollStep;
+			_mouseWheelStep = _scrollStep * 2;
+			_softnessOnTopOrLeftSide = UIConfig.allowSoftnessOnTopOrLeftSide;
+			_decelerationRate = UIConfig.defaultScrollDecelerationRate;
+			_touchEffect = UIConfig.defaultScrollTouchEffect;
+			_bouncebackEffect = UIConfig.defaultScrollBounceEffect;
+			_scrollBarVisible = true;
+			_mouseWheelEnabled = true;
+			_pageSize = new Vector2(1, 1);
+
 			_refreshDelegate = Refresh;
 			_tweenUpdateDelegate = TweenUpdate;
-			_showScrollBarDelegate = __showScrollBar;
+			_showScrollBarDelegate = onShowScrollBar;
 
 			_owner = owner;
 
@@ -129,15 +131,33 @@ namespace FairyGUI
 			_owner.rootContainer.AddChild(_maskContainer);
 
 			_container = _owner.container;
-			_container.SetPosition(0, 0, 0);
+			_container.SetPosition(0, 0);
 			_maskContainer.AddChild(_container);
 
-			_scrollBarMargin = scrollBarMargin;
-			_scrollType = scrollType;
-			_scrollStep = UIConfig.defaultScrollStep;
-			_mouseWheelStep = _scrollStep * 2;
-			_softnessOnTopOrLeftSide = UIConfig.allowSoftnessOnTopOrLeftSide;
-			_decelerationRate = UIConfig.defaultScrollDecelerationRate;
+			_owner.rootContainer.onMouseWheel.Add(__mouseWheel);
+			_owner.rootContainer.onTouchBegin.Add(__touchBegin);
+			_owner.rootContainer.onTouchMove.Add(__touchMove);
+			_owner.rootContainer.onTouchEnd.Add(__touchEnd);
+		}
+
+		public void Setup(ByteBuffer buffer)
+		{
+			_scrollType = (ScrollType)buffer.ReadByte();
+			ScrollBarDisplayType scrollBarDisplay = (ScrollBarDisplayType)buffer.ReadByte();
+			int flags = buffer.ReadInt();
+
+			if (buffer.ReadBool())
+			{
+				_scrollBarMargin.top = buffer.ReadInt();
+				_scrollBarMargin.bottom = buffer.ReadInt();
+				_scrollBarMargin.left = buffer.ReadInt();
+				_scrollBarMargin.right = buffer.ReadInt();
+			}
+
+			string vtScrollBarRes = buffer.ReadS();
+			string hzScrollBarRes = buffer.ReadS();
+			string headerRes = buffer.ReadS();
+			string footerRes = buffer.ReadS();
 
 			_displayOnLeft = (flags & 1) != 0;
 			_snapToItem = (flags & 2) != 0;
@@ -147,20 +167,12 @@ namespace FairyGUI
 				_touchEffect = true;
 			else if ((flags & 32) != 0)
 				_touchEffect = false;
-			else
-				_touchEffect = UIConfig.defaultScrollTouchEffect;
 			if ((flags & 64) != 0)
 				_bouncebackEffect = true;
 			else if ((flags & 128) != 0)
 				_bouncebackEffect = false;
-			else
-				_bouncebackEffect = UIConfig.defaultScrollBounceEffect;
 			_inertiaDisabled = (flags & 256) != 0;
 			_maskDisabled = (flags & 512) != 0;
-
-			_scrollBarVisible = true;
-			_mouseWheelEnabled = true;
-			_pageSize = new Vector2(1, 1);
 
 			if (scrollBarDisplay == ScrollBarDisplayType.Default)
 			{
@@ -174,7 +186,7 @@ namespace FairyGUI
 			{
 				if (_scrollType == ScrollType.Both || _scrollType == ScrollType.Vertical)
 				{
-					string res = string.IsNullOrEmpty(vtScrollBarRes) ? UIConfig.verticalScrollBar : vtScrollBarRes;
+					string res = vtScrollBarRes != null ? vtScrollBarRes : UIConfig.verticalScrollBar;
 					if (!string.IsNullOrEmpty(res))
 					{
 						_vtScrollBar = UIPackage.CreateObjectFromURL(res) as GScrollBar;
@@ -189,7 +201,7 @@ namespace FairyGUI
 				}
 				if (_scrollType == ScrollType.Both || _scrollType == ScrollType.Horizontal)
 				{
-					string res = string.IsNullOrEmpty(hzScrollBarRes) ? UIConfig.horizontalScrollBar : hzScrollBarRes;
+					string res = hzScrollBarRes != null ? hzScrollBarRes : UIConfig.horizontalScrollBar;
 					if (!string.IsNullOrEmpty(res))
 					{
 						_hzScrollBar = UIPackage.CreateObjectFromURL(res) as GScrollBar;
@@ -219,32 +231,30 @@ namespace FairyGUI
 			else
 				_mouseWheelEnabled = false;
 
-			if (Application.isPlaying)
+			if (headerRes != null)
 			{
-				if (!string.IsNullOrEmpty(headerRes))
-				{
-					_header = (GComponent)UIPackage.CreateObjectFromURL(headerRes);
-					if (_header == null)
-						Log.Warning("FairyGUI: cannot create scrollPane header from " + headerRes);
-				}
+				_header = (GComponent)UIPackage.CreateObjectFromURL(headerRes);
+				if (_header == null)
+					Log.Warning("FairyGUI: cannot create scrollPane header from " + headerRes);
+			}
 
-				if (!string.IsNullOrEmpty(footerRes))
-				{
-					_footer = (GComponent)UIPackage.CreateObjectFromURL(footerRes);
-					if (_footer == null)
-						Log.Warning("FairyGUI: cannot create scrollPane footer from " + footerRes);
-				}
+			if (footerRes != null)
+			{
+				_footer = (GComponent)UIPackage.CreateObjectFromURL(footerRes);
+				if (_footer == null)
+					Log.Warning("FairyGUI: cannot create scrollPane footer from " + footerRes);
+			}
 
-				if (_header != null || _footer != null)
-					_refreshBarAxis = (_scrollType == ScrollType.Both || _scrollType == ScrollType.Vertical) ? 1 : 0;
+			if (_header != null || _footer != null)
+				_refreshBarAxis = (_scrollType == ScrollType.Both || _scrollType == ScrollType.Vertical) ? 1 : 0;
+
+			if (!_maskDisabled && (_vtScrollBar != null || _hzScrollBar != null))
+			{
+				//当有滚动条对象时，为了避免滚动条变化时触发重新合批，这里给rootContainer也加上剪裁。但这可能会增加额外dc。
+				_owner.rootContainer.clipRect = new Rect(0, 0, _owner.width, _owner.height);
 			}
 
 			SetSize(owner.width, owner.height);
-
-			_owner.rootContainer.onMouseWheel.Add(__mouseWheel);
-			_owner.rootContainer.onTouchBegin.Add(__touchBegin);
-			_owner.rootContainer.onTouchMove.Add(__touchMove);
-			_owner.rootContainer.onTouchEnd.Add(__touchEnd);
 		}
 
 		/// <summary>
@@ -252,8 +262,13 @@ namespace FairyGUI
 		/// </summary>
 		public void Dispose()
 		{
+			RemoveEventListeners();
+
 			if (_tweening != 0)
 				Timers.inst.Remove(_tweenUpdateDelegate);
+
+			if (draggingPane == this)
+				draggingPane = null;
 
 			_pageController = null;
 
@@ -273,6 +288,22 @@ namespace FairyGUI
 		public GComponent owner
 		{
 			get { return _owner; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public GScrollBar hzScrollBar
+		{
+			get { return this._hzScrollBar; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public GScrollBar vtScrollBar
+		{
+			get { return this._vtScrollBar; }
 		}
 
 		/// <summary>
@@ -908,7 +939,7 @@ namespace FairyGUI
 			_headerLockedSize = size;
 			if (!onPullDownRelease.isDispatching && _container.xy[_refreshBarAxis] >= 0)
 			{
-				_tweenStart = (Vector2)_container.position;
+				_tweenStart = _container.xy;
 				_tweenChange = Vector2.Zero;
 				_tweenChange[_refreshBarAxis] = _headerLockedSize - _tweenStart[_refreshBarAxis];
 				_tweenDuration = new Vector2(TWEEN_TIME_DEFAULT, TWEEN_TIME_DEFAULT);
@@ -992,7 +1023,7 @@ namespace FairyGUI
 			mx += _owner._alignOffset.x;
 			my += _owner._alignOffset.y;
 
-			_maskContainer.SetPosition(mx, my, 0);
+			_maskContainer.SetPosition(mx, my);
 		}
 
 		void SetSize(float aWidth, float aHeight)
@@ -1228,9 +1259,9 @@ namespace FairyGUI
 			else
 				max += _footerLockedSize;
 			if (_refreshBarAxis == 0)
-				_container.SetPosition(MathHelpers.Clamp(_container.x, -max, _headerLockedSize), MathHelpers.Clamp(_container.y, -_overlapSize.y, 0), 0);
+				_container.SetPosition(MathHelpers.Clamp(_container.x, -max, _headerLockedSize), MathHelpers.Clamp(_container.y, -_overlapSize.y, 0));
 			else
-				_container.SetPosition(MathHelpers.Clamp(_container.x, -_overlapSize.x, 0), MathHelpers.Clamp(_container.y, -max, _headerLockedSize), 0);
+				_container.SetPosition(MathHelpers.Clamp(_container.x, -_overlapSize.x, 0), MathHelpers.Clamp(_container.y, -max, _headerLockedSize));
 
 			if (_header != null)
 			{
@@ -1248,7 +1279,7 @@ namespace FairyGUI
 					_footer.width = _viewSize.x;
 			}
 
-			SyncScrollBar();
+			SyncScrollBar(true);
 			CheckRefreshBar();
 			if (_pageMode)
 				UpdatePageController();
@@ -1362,6 +1393,8 @@ namespace FairyGUI
 				if (_scrollBarDisplayAuto)
 					ShowScrollBar(!end);
 			}
+
+			//UpdateClipSoft();
 		}
 
 		private void __touchBegin(EventContext context)
@@ -1388,7 +1421,7 @@ namespace FairyGUI
 			else
 				_isMouseMoved = false;
 
-			_containerPos = (Vector2)_container.position;
+			_containerPos = _container.xy;
 			_beginTouchPos = _lastTouchPos = pt;
 			_lastTouchGlobalPos = evt.position;
 			_isHoldAreaDone = false;
@@ -1640,7 +1673,7 @@ namespace FairyGUI
 					_tweenChange = endPos - _tweenStart;
 				}
 
-				_tweenDuration = new Vector2(TWEEN_TIME_DEFAULT, TWEEN_TIME_DEFAULT);
+				_tweenDuration =  new Vector2(TWEEN_TIME_DEFAULT, TWEEN_TIME_DEFAULT);
 			}
 			else
 			{
@@ -1688,7 +1721,7 @@ namespace FairyGUI
 		{
 			if (!_mouseWheelEnabled)
 				return;
-			
+
 			InputEvent evt = context.inputEvent;
 			int delta = evt.mouseWheelDelta;
 			delta = Math.Sign(delta);
@@ -1720,18 +1753,16 @@ namespace FairyGUI
 
 		private void ShowScrollBar(bool val)
 		{
-			if (!Application.isPlaying)
-				__showScrollBar(val);
-			else if (val)
+			if (val)
 			{
-				__showScrollBar(true);
+				onShowScrollBar(true);
 				Timers.inst.Remove(_showScrollBarDelegate);
 			}
 			else
 				Timers.inst.Add(0.5f, 1, _showScrollBarDelegate, val);
 		}
 
-		private void __showScrollBar(object obj)
+		private void onShowScrollBar(object obj)
 		{
 			if (_owner.displayObject == null || _owner.displayObject.isDisposed)
 				return;

@@ -30,14 +30,14 @@ namespace FairyGUI.Utils
 			IHtmlObject ret = null;
 			if (element.type == HtmlElementType.Image)
 			{
-				if (_imagePool.Count > 0 && Application.isPlaying)
+				if (_imagePool.Count > 0)
 					ret = _imagePool.Pop();
 				else
 					ret = new HtmlImage();
 			}
 			else if (element.type == HtmlElementType.Link)
 			{
-				if (_linkPool.Count > 0 && Application.isPlaying)
+				if (_linkPool.Count > 0)
 					ret = _linkPool.Pop();
 				else
 					ret = new HtmlLink();
@@ -49,14 +49,14 @@ namespace FairyGUI.Utils
 					type = type.ToLower();
 				if (type == "button" || type == "submit")
 				{
-					if (_buttonPool.Count > 0 && Application.isPlaying)
+					if (_buttonPool.Count > 0)
 						ret = _buttonPool.Pop();
 					else
 						ret = new HtmlButton();
 				}
 				else
 				{
-					if (_inputPool.Count > 0 && Application.isPlaying)
+					if (_inputPool.Count > 0)
 						ret = _inputPool.Pop();
 					else
 						ret = new HtmlInput();
@@ -64,7 +64,7 @@ namespace FairyGUI.Utils
 			}
 			else if (element.type == HtmlElementType.Select)
 			{
-				if (_selectPool.Count > 0 && Application.isPlaying)
+				if (_selectPool.Count > 0)
 					ret = _selectPool.Pop();
 				else
 					ret = new HtmlSelect();
@@ -81,11 +81,6 @@ namespace FairyGUI.Utils
 		virtual public void FreeObject(IHtmlObject obj)
 		{
 			obj.Release();
-			if (!Application.isPlaying)
-			{
-				obj.Dispose();
-				return;
-			}
 
 			//可能已经被GameObject tree deleted了，不再回收
 			if (obj.displayObject != null && obj.displayObject.isDisposed)

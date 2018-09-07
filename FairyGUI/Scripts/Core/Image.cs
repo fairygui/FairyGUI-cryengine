@@ -26,6 +26,10 @@ namespace FairyGUI
 		protected Rect? _scale9Grid;
 		protected bool _scaleByTile;
 		protected int _tileGridIndice;
+		protected FillMethod _fillMethod;
+		protected int _fillOrigin;
+		protected float _fillAmount;
+		protected bool _fillClockwise;
 
 		public Image() : this(null)
 		{
@@ -86,6 +90,70 @@ namespace FairyGUI
 				if (_flip != value)
 				{
 					_flip = value;
+					_requireUpdateMesh = true;
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public FillMethod fillMethod
+		{
+			get { return _fillMethod; }
+			set
+			{
+				if (_fillMethod != value)
+				{
+					_fillMethod = value;
+					_requireUpdateMesh = true;
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public int fillOrigin
+		{
+			get { return _fillOrigin; }
+			set
+			{
+				if (_fillOrigin != value)
+				{
+					_fillOrigin = value;
+					_requireUpdateMesh = true;
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool fillClockwise
+		{
+			get { return _fillClockwise; }
+			set
+			{
+				if (_fillClockwise != value)
+				{
+					_fillClockwise = value;
+					_requireUpdateMesh = true;
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public float fillAmount
+		{
+			get { return _fillAmount; }
+			set
+			{
+				if (_fillAmount != value)
+				{
+					_fillAmount = value;
 					_requireUpdateMesh = true;
 				}
 			}

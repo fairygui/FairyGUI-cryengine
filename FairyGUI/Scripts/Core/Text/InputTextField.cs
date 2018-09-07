@@ -733,7 +733,7 @@ namespace FairyGUI
 
 		void __focusIn(EventContext context)
 		{
-			if (!editable || !Application.isPlaying)
+			if (!editable)
 				return;
 
 			_editing = true;

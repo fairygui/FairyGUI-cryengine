@@ -11,21 +11,6 @@ namespace FairyGUI
 		/// <summary>
 		/// 
 		/// </summary>
-		public Texture nativeTexture;
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public NTexture alphaTexture;
-
-		/// <summary>
-		/// 
-		/// </summary>
-		public NTexture root;
-
-		/// <summary>
-		/// 
-		/// </summary>
 		public Rect uvRect;
 
 		/// <summary>
@@ -41,19 +26,12 @@ namespace FairyGUI
 		/// <summary>
 		/// 
 		/// </summary>
-		public bool disposed;
-
-		/// <summary>
-		/// 
-		/// </summary>
 		public float lastActive;
 
-		/// <summary>
-		/// 
-		/// </summary>
-		public bool storedODisk;
-
-		Rect? _region;
+		Texture _nativeTexture;
+		Texture _alphaTexture;
+		Rect _region;
+		NTexture _root;
 
 		static Texture CreateEmptyTexture()
 		{
@@ -84,8 +62,9 @@ namespace FairyGUI
 		{
 			if (_empty != null)
 			{
-				_empty.Dispose();
+				NTexture tmp = _empty;
 				_empty = null;
+				tmp.Dispose();
 			}
 		}
 
@@ -95,22 +74,26 @@ namespace FairyGUI
 		/// <param name="texture"></param>
 		public NTexture(Texture texture)
 		{
-			root = this;
-			nativeTexture = texture;
+			_root = this;
+			_nativeTexture = texture;
 			uvRect = new Rect(0, 0, 1, 1);
+			_region = new Rect(0, 0, texture.Width, texture.Height);
 		}
 
 		/// <summary>
 		/// 
 		/// </summary>
 		/// <param name="texture"></param>
+		/// /// <param name="alphaTexture"></param>
 		/// <param name="xScale"></param>
 		/// <param name="yScale"></param>
-		public NTexture(Texture texture, float xScale, float yScale)
+		public NTexture(Texture texture, Texture alphaTexture, float xScale, float yScale)
 		{
-			root = this;
-			nativeTexture = texture;
+			_root = this;
+			_nativeTexture = texture;
+			_alphaTexture = alphaTexture;
 			uvRect = new Rect(0, 0, xScale, yScale);
+			_region = new Rect(0, 0, texture.Width, texture.Height);
 		}
 
 		/// <summary>
@@ -120,11 +103,11 @@ namespace FairyGUI
 		/// <param name="region"></param>
 		public NTexture(Texture texture, Rect region)
 		{
-			root = this;
-			nativeTexture = texture;
+			_root = this;
+			_nativeTexture = texture;
 			_region = region;
-			uvRect = new Rect(region.x / nativeTexture.Width, 1 - (region.y + region.Height) / nativeTexture.Height,
-				region.Width / nativeTexture.Width, region.Height / nativeTexture.Height);
+			uvRect = new Rect(region.x / _nativeTexture.Width, 1 - (region.y + region.Height) / _nativeTexture.Height,
+				region.Width / _nativeTexture.Width, region.Height / _nativeTexture.Height);
 		}
 
 		/// <summary>
@@ -134,16 +117,12 @@ namespace FairyGUI
 		/// <param name="region"></param>
 		public NTexture(NTexture root, Rect region, bool rotated)
 		{
-			this.root = root;
-			nativeTexture = root.nativeTexture;
+			_root = root;
 			this.rotated = rotated;
-			if (root._region != null)
-			{
-				region.x += ((Rect)root._region).x;
-				region.y += ((Rect)root._region).y;
-			}
-			uvRect = new Rect(region.x * root.uvRect.Width / nativeTexture.Width, 1 - (region.y + region.Height) * root.uvRect.Height / nativeTexture.Height,
-				region.Width * root.uvRect.Width / nativeTexture.Width, region.Height * root.uvRect.Height / nativeTexture.Height);
+			region.x += root._region.x;
+			region.y += root._region.y;
+			uvRect = new Rect(region.x * root.uvRect.Width / root.width, 1 - (region.y + region.Height) * root.uvRect.Height / root.height,
+				region.Width * root.uvRect.Width / root.width, region.Height * root.uvRect.Height / root.height);
 			if (rotated)
 			{
 				float tmp = region.Width;
@@ -163,13 +142,7 @@ namespace FairyGUI
 		/// </summary>
 		public int width
 		{
-			get
-			{
-				if (_region != null)
-					return (int)((Rect)_region).Width;
-				else
-					return nativeTexture.Width;
-			}
+			get { return (int)_region.Width; }
 		}
 
 		/// <summary>
@@ -177,33 +150,77 @@ namespace FairyGUI
 		/// </summary>
 		public int height
 		{
-			get
-			{
-				if (_region != null)
-					return (int)((Rect)_region).Height;
-				else
-					return nativeTexture.Height;
-			}
+			get { return (int)_region.Height; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public NTexture root
+		{
+			get { return _root; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public bool disposed
+		{
+			get { return _root == null; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public Texture nativeTexture
+		{
+			get { return _root != null ? _root._nativeTexture : null; }
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
+		public Texture alphaTexture
+		{
+			get { return _root != null ? _root._alphaTexture : null; }
 		}
 
 		public int ID
 		{
-			get { return nativeTexture.ID; }
+			get { return _root != null ? _root._nativeTexture.ID : -1; }
+		}
+		/// <summary>
+		/// 
+		/// </summary>
+		public void Unload()
+		{
+			if (this == _empty)
+				return;
+
+			if (_root != this)
+				throw new System.Exception("Unload is not allow to call on none root NTexture.");
+
+			if (_nativeTexture != null)
+			{
+				_nativeTexture.Destroy();
+				_nativeTexture = null;
+			}
+
+			if(_alphaTexture!=null)
+			{
+				_alphaTexture.Destroy();
+				_alphaTexture = null;
+			}
 		}
 
 		public void Dispose()
 		{
-			if (!disposed)
-			{
-				disposed = true;
+			if (this == _empty)
+				return;
 
-				if (root == this && nativeTexture != null)
-				{
-					nativeTexture.Destroy();
-				}
-				nativeTexture = null;
-				root = null;
-			}
+			if (_root == this)
+				Unload();
+			_root = null;
 		}
 	}
 }
