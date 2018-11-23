@@ -642,9 +642,18 @@ namespace FairyGUI
 					Font measureFont = ((DynamicFont)_font).GetNativeFont(false);
 					while (true)
 					{
-						measureRect = nativeGraphics.MeasureString(textBlock, measureFont, measureRect, stringFormat, out charactersFitte, out linesFilled);
+						SizeF measureRect2 = nativeGraphics.MeasureString(textBlock, measureFont, measureRect, stringFormat, out charactersFitte, out linesFilled);
+						if (measureRect2.Width > measureRect.Width && charactersFitte == 1)
+						{
+							measureRect.Width = wrap ? _contentRect.Width : int.MaxValue;
 
+							startNewLine();
+							continue;
+						}
+
+						measureRect = measureRect2;
 						measureRect.Width -= GUTTER_X * 2;
+						measureRect.Height -= GUTTER_Y;
 
 						if (measureRect.Height > line.textHeight)
 							line.textHeight = measureRect.Height;
