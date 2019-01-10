@@ -23,6 +23,7 @@ namespace FairyGUI
 		bool _wordWrap;
 		bool _singleLine;
 		bool _html;
+		int _maxWidth;
 
 		int _stroke;
 		Color _strokeColor;
@@ -288,6 +289,25 @@ namespace FairyGUI
 			}
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
+		public int maxWidth
+		{
+			get { return _maxWidth; }
+			set
+			{
+				if (_maxWidth != value)
+				{
+					_maxWidth = value;
+					_textChanged = true;
+				}
+			}
+		}
+
+		/// <summary>
+		/// 
+		/// </summary>
 		public List<HtmlElement> htmlElements
 		{
 			get
@@ -299,6 +319,9 @@ namespace FairyGUI
 			}
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
 		public List<LineInfo> lines
 		{
 			get
@@ -310,6 +333,9 @@ namespace FairyGUI
 			}
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
 		public List<CharPosition> charPositions
 		{
 			get
@@ -324,6 +350,9 @@ namespace FairyGUI
 			}
 		}
 
+		/// <summary>
+		/// 
+		/// </summary>
 		public RichTextField richTextField
 		{
 			get { return _richTextField; }
@@ -505,7 +534,14 @@ namespace FairyGUI
 				wrap = !_singleLine;
 			}
 			else
+			{
 				wrap = _wordWrap && !_singleLine;
+				if (_maxWidth > 0)
+				{
+					wrap = true;
+					rectWidth = _maxWidth - GUTTER_X * 2;
+				}
+			}
 			_fontSizeScale = 1;
 
 			int elementCount = _elements.Count;
@@ -638,14 +674,14 @@ namespace FairyGUI
 
 				if (systemFont)
 				{
-					SizeF measureRect = new SizeF(wrap ? (_contentRect.Width - line.width) : int.MaxValue, format.size);
+					SizeF measureRect = new SizeF(wrap ? (rectWidth - line.width) : int.MaxValue, format.size);
 					Font measureFont = ((DynamicFont)_font).GetNativeFont(false);
 					while (true)
 					{
 						SizeF measureRect2 = nativeGraphics.MeasureString(textBlock, measureFont, measureRect, stringFormat, out charactersFitte, out linesFilled);
-						if (measureRect2.Width > measureRect.Width && charactersFitte == 1)
+						if (measureRect2.Width > measureRect.Width && charactersFitte == 1 && line.width > 0)
 						{
-							measureRect.Width = wrap ? _contentRect.Width : int.MaxValue;
+							measureRect.Width = wrap ? rectWidth : int.MaxValue;
 
 							startNewLine();
 							continue;
@@ -688,7 +724,7 @@ namespace FairyGUI
 						else
 							re.text = textBlock.Substring(0, charactersFitte);
 						textBlock = textBlock.Substring(charactersFitte);
-						measureRect.Width = wrap ? _contentRect.Width : int.MaxValue;
+						measureRect.Width = wrap ? rectWidth : int.MaxValue;
 
 						startNewLine();
 					}
