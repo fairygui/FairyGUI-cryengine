@@ -159,7 +159,7 @@ namespace FairyGUI
 				if (oldFocus != null)
 				{
 					if (oldFocus is InputTextField)
-						((InputTextField)oldFocus).onFocusOut.Call();
+						oldFocus.DispatchEvent("onFocusOut", null);
 
 					oldFocus.onRemovedFromStage.RemoveCapture(_focusRemovedDelegate);
 				}
@@ -169,7 +169,7 @@ namespace FairyGUI
 					if (_focused is InputTextField)
 					{
 						_lastInput = (InputTextField)_focused;
-						_lastInput.onFocusIn.Call();
+						_lastInput.DispatchEvent("onFocusIn", null);
 					}
 
 					_focused.onRemovedFromStage.AddCapture(_focusRemovedDelegate);
@@ -345,7 +345,7 @@ namespace FairyGUI
 					this.focus = _touchInfo.target;
 
 					_touchInfo.UpdateEvent();
-					_touchInfo.target.onTouchBegin.BubbleCall(_touchInfo.evt);
+					_touchInfo.target.BubbleEvent("onTouchBegin", _touchInfo.evt);
 				}
 			}
 			if (eHardwareMouseEvent == EHARDWAREMOUSEEVENT.HARDWAREMOUSEEVENT_LBUTTONUP ||
@@ -363,9 +363,9 @@ namespace FairyGUI
 						_touchInfo.UpdateEvent();
 
 						if (eHardwareMouseEvent == EHARDWAREMOUSEEVENT.HARDWAREMOUSEEVENT_RBUTTONUP)
-							clickTarget.onRightClick.BubbleCall(_touchInfo.evt);
+							clickTarget.BubbleEvent("onRightClick", _touchInfo.evt);
 						else
-							clickTarget.onClick.BubbleCall(_touchInfo.evt);
+							clickTarget.BubbleEvent("onClick", _touchInfo.evt);
 					}
 
 					_touchInfo.button = -1;
@@ -463,9 +463,9 @@ namespace FairyGUI
 			_touchInfo.UpdateEvent();
 			DisplayObject f = this.focus;
 			if (f != null)
-				f.onKeyDown.BubbleCall(_touchInfo.evt);
+				f.BubbleEvent("onKeyDown", _touchInfo.evt);
 			else
-				this.onKeyDown.Call(_touchInfo.evt);
+				this.DispatchEvent("onKeyDown", _touchInfo.evt);
 		}
 
 		void HandleTextInput()
@@ -511,7 +511,7 @@ namespace FairyGUI
 				{
 					element = _rollOutChain[i];
 					if (element.stage != null)
-						element.onRollOut.Call();
+						element.DispatchEvent("onRollOut", null);
 				}
 				_rollOutChain.Clear();
 			}
@@ -523,7 +523,7 @@ namespace FairyGUI
 				{
 					element = _rollOverChain[i];
 					if (element.stage != null)
-						element.onRollOver.Call();
+						element.DispatchEvent("onRollOver", null);
 				}
 				_rollOverChain.Clear();
 			}
